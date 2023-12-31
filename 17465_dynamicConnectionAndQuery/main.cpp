@@ -1,207 +1,142 @@
 #include<iostream>
 #include<map>
 #include<queue>
-#define SAME_COMPONENT 1
+#include<set>
+
+
+using std::map;
+using std::set;
+using std::queue;
+using Node = int;
 
 struct Edge {
-	int first;
-	int second;
-	int level;
+	int a;
+	int b;
 };
 
-bool operator<(const Edge& a, const Edge& b) {
-	/*if (a.first < b.first) {
-		return true;
-	}
-	else if (a.first == b.first) {
-		if (a.second < b.second) {
-			return true;
-		}
-		else if (a.second == b.second) {
-			return a.level < b.level;
-		}
-		else {
-			return false;
-		}
-	}
-	else {
-		return false;
-	}*/
-	if (a.level > b.level) {
-		return true;
-	}
-	else if (a.level == b.level) {
-		if (a.first < b.first) {
-			return true;
-		}
-		else {
-			return a.first == b.first && a.second < b.second;
-		}
-	}
-	else {
-		return false;
-	}
+bool operator<(const Edge& e1, const Edge& e2) {
+	return e1.a < e2.a || e1.a == e2.a && e1.b < e2.b;
 }
 
-//bool operator<(const std::pair<int, int>& a, const std::pair<int, int>& b) {
-//	return a.first < b.first || a.first == b.first && a.second == b.second;
-//}
+class MST {
+	struct MSTNode {
+		MSTNode* prev = nullptr;
+		Edge value;
+		MSTNode* next = nullptr;
+	};
+	map<Edge, MSTNode*> mst;
 
-struct MSTNode {
-	Edge edge;
-	MSTNode* prev;
-	MSTNode* next;
-};
-
-int N, Q;
-unsigned long long F;
-std::map<std::pair<int, int>, int> levels;
-std::map<Edge, MSTNode*> mstnodes;
-int numComponent;
-
-void rooting(MSTNode* node) {
-	if (node->prev == nullptr) {
-		return;
+	void addNode(Node node) {
+		MSTNode* mstnode = new MSTNode{ nullptr, {node,node}, nullptr };
+		mst.insert({ { node,node }, mstnode });
 	}
 
-	MSTNode* start = node->prev;
-	while (start->prev != nullptr) {
-		start = start->prev;
-	}
-
-	MSTNode* end = node;
-	while (end->next != nullptr) {
-		end = end->next;
-	}
-
-	node->prev->next = nullptr;
-	node->prev = nullptr;
-	end->next = start;
-	start->prev = end;
-	return;
-}
-
-int query1(int x, int y) {
-	// insertion
-	if (levels.find({ x,y }) == levels.end()) {
-		levels.insert({ { x, y }, 0 });
-		levels.insert({ { y, x }, 0 });
-		// same component
-		if (query2(x, y) == true) {
+public:
+	void rooting(const Edge& e) {
+		MSTNode* edge = mst[e];
+		if (edge->prev == nullptr) {
 			return;
 		}
-		// not same component
-		MSTNode* nodeX, * nodeY, * xy, * yx;
-		auto iter = mstnodes.find({ x,x,0 });
-		if (iter == mstnodes.end()) {
-			nodeX = new MSTNode{ {x,x,0},nullptr,nullptr };
-			mstnodes.insert({ {x,x,0},nodeX });
-		}
-		else {
-			nodeX = iter->second;
-			rooting(nodeX);
-		}
-		iter = mstnodes.find({ y,y,0 });
-		if (iter == mstnodes.end()) {
-			nodeY = new MSTNode{ {y,y,0},nullptr,nullptr };
-			mstnodes.insert({ {y,y,0},nodeY });
-		}
-		else {
-			nodeY = iter->second;
-			rooting(nodeY);
-		}
-		xy = new MSTNode{ {x,y,0},nodeX,nodeY };
-		nodeY->prev = xy;
-		while (nodeY->next != nullptr) {
-			nodeY = nodeY->next;
-		}
-		nodeY->next = yx;
-		yx = new MSTNode{ {y,x,0},nodeY,nodeX->next };
-		nodeX->next->prev = yx;
-		nodeX->next = xy;
 
-		mstnodes.insert({ {x,y,0}, xy });
-		mstnodes.insert({ {y,x,0}, yx });
-		return;
+		MSTNode* n1, * n2, * n3, * n4;
+		n1 = edge;
+		while (n1->prev != nullptr) {
+			n1 = n1->prev;
+		}
+		n2 = edge->prev;
+
+		n3 = edge;
+		n4 = edge;
+		while (n4->next == nullptr)
+		{
+			n4 = n4->next;
+		}
+		n2->next = nullptr;
+		n3->prev = nullptr;
+
+		n4->next = n1;
+		n1->prev = n4;
 	}
 
-	// deletion
-	// when mst doesn't have edge(x,y,0)
+	void addEdge(const Edge& e) {
+		if (mst.find({ e.a,e.a }) == mst.end()) {
+			addNode(e.a);
+		}
+		if (mst.find({ e.b,e.b }) == mst.end()) {
+			addNode(e.b);
+		}
 
-	// TODO
-	//if (mstnodes.find({ x,y,0 }) == mstnodes.end()) {
-	//	levels.erase({ x,y });
-	//}
-	//else {
-	//	// count nodes
-	//	MSTNode* xy, * yx;
-	//	MSTNode* alter;
+		rooting({ e.a,e.a });
+		rooting({ e.b,e.b });
+		MSTNode* n1, * n2, * n3, * n4;
+		n1 = mst[{e.a, e.a}];
+		n2 = n1->next;
+		n3 = mst[{e.b, e.b}];
+		n4 = n3;
+		while (n4->next != nullptr) {
+			n4 = n4->next;
+		}
 
-	//	int level = levels[{x, y}];
-	//	for (; level >= 0; level--) {
-	//		xy = mstnodes[{x, y, level}];
-	//		yx = mstnodes[{y, x, level}];
+		MSTNode* e1, * e2;
+		e1 = new MSTNode{ n1, {e.a, e.b}, n3 };
+		e2 = new MSTNode{ n4, {e.b, e.a}, n2 };
 
-	//		// find alternative edge
-	//	}
+		n1->next = e1;
+		if (n2 != nullptr) {
+			n2->prev = e2;
+		}
+		n3->prev = e1;
+		n4->next = e2;
+	}
+	
+	void removeEdge(const Edge& e);
+
+};
+
+class Forest {
+	class NoEdge :std::exception {};
+	set<Edge> extraEdges;
+	MST mst;
+	map<Node, Forest*> subforest;
+
+public:
+	Forest(MST& mst) :mst(mst) {}
+
+	~Forest() {
+		for (auto iter : subforest) {
+			delete iter.second;
+		}
+		for (auto iter : mst) {
+			delete iter.second;
+		}
+	}
+
+	void addMSTEdge(const Edge& e) {
+		rooting({ e.a, e.a });
+		rooting({ e.b, e.b });
+		
+	}
+	
 
 
-	//}
+	Edge findAlterEdge(Edge& e) {
+		rooting(e);
+		
+		
+
+	}
 
 	
 
 
-}
-int query2(int x, int y) {
-	auto iter = mstnodes.find({ x,x,0 });
-	MSTNode* nodeX, * nodeY;
-	if (iter != mstnodes.end()) {
-		nodeX = iter->second;
-	}
-	else {
-		return 0;
-	}
-	iter = mstnodes.find({ y,y,0 });
-	if (iter != mstnodes.end()) {
-		nodeY = iter->second;
-	}
-	else {
-		return 0;
-	}
 
-	rooting(nodeX);
+	
+	
+};
 
-	while (nodeY->prev != nullptr) {
-		nodeY = nodeY->prev;
-	}
+int* roots;
 
-	return nodeX == nodeY;
-}
+bool findSet();
+void unionSet();
 
-int main() {
-	using namespace std;
-	cin >> N >> Q;
-	numComponent = N;
-
-	for (int i = 0; i < Q; i++) {
-		int a, b, x, y;
-		cin >> a >> b;
-
-		x = (a ^ F) % N;
-		y = (b ^ F) % N;
-
-		if (x < y) {
-			query1(x,y);
-		}
-		else {
-			//cout << (getRoot(x) == getRoot(y) ? 1 : 0) << endl;
-			cout << query2(x, y);
-		}
-
-		F += numComponent;
-	}
-
-
-	return 0;
-}
 
