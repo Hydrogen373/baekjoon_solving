@@ -1,142 +1,235 @@
 #include<iostream>
 #include<map>
-#include<queue>
 #include<set>
 
-
+// structure
 using std::map;
 using std::set;
-using std::queue;
-using Node = int;
+using Node = unsigned int;
+class Ark {
+public:
+	Node a;
+	Node b;
+	Ark() : Ark(0, 0) {
+	}
+	Ark(Node a, Node b) : a(a), b(b) {
+	}
+	bool operator<(const Ark& other) {
+		return this->a < other.a || this->a == other.a && this->b < other.b;
+	}
+	//bool operator>(const Ark& other) {
+	//	return !(*this < other);
+	//}
+	//bool operator==(const Ark& other) {
+	//	return !((*this < other) && (*this < other));
+	//}
 
-struct Edge {
-	int a;
-	int b;
 };
-
-bool operator<(const Edge& e1, const Edge& e2) {
-	return e1.a < e2.a || e1.a == e2.a && e1.b < e2.b;
-}
-
-class MST {
-	struct MSTNode {
-		MSTNode* prev = nullptr;
-		Edge value;
-		MSTNode* next = nullptr;
-	};
-	map<Edge, MSTNode*> mst;
-
-	void addNode(Node node) {
-		MSTNode* mstnode = new MSTNode{ nullptr, {node,node}, nullptr };
-		mst.insert({ { node,node }, mstnode });
+class Edge :Ark {
+public:
+	Edge() :Edge(0, 0) {
+	}
+	Edge(Node a, Node b) :Ark(a, b) {
+		if (a > b) std::swap(a, b);
+	}
+	Edge(const Ark& ark) {
+		this->a = ark.a;
+		this->b = ark.b;
+		if (a > b) std::swap(a, b);
+	}
+};
+class LeveledArk :Ark {
+public:
+	int level;
+	LeveledArk() :LeveledArk(0, 0, 0) {
+	}
+	LeveledArk(Node a, Node b, int level) :Ark(a, b), level(level) {
+	}
+	bool operator<(const LeveledArk& other) {
+		if (this->level != other.level) return this->level < other.level;
+		else if (this->a != other.a) return this->a < other.a;
+		else return this->b < other.b;
+	}
+};
+class LeveledEdge :LeveledArk {
+public:
+	int level;
+	LeveledEdge() :LeveledEdge(0, 0, 0) {
+	}
+	LeveledEdge(Node a, Node b, int level) :LeveledArk(a, b, level) {
+		if (a > b) std::swap(a, b);
+	}
+};
+class NoEdge :std::exception {};
+class SeriesNode {
+	LeveledArk ark;
+	SeriesNode* p, * l, * r;
+	int count;
+	SeriesNode* head;
+	bool isVertex;
+	
+	void update() {
+		this->count = 1 + l->count + r->count;
+		if (l->head != nullptr) {
+			this->head = l->head;
+		}
+		else if (this->isVertex) {
+			this->head = this;
+		}
+		else {
+			this->head = r->head;
+		}
 	}
 
-public:
-	void rooting(const Edge& e) {
-		MSTNode* edge = mst[e];
-		if (edge->prev == nullptr) {
+	void rotate() {
+		if (this->p == nullptr) {
+			return;
+		}
+		SeriesNode* child;
+		SeriesNode* grandpa = p->p;
+		SeriesNode* parent = this->p;
+		if (p->l == this) {
+			child = this->r;
+			this->r = parent;
+			this->p = grandpa;
+			parent->l = child;
+			parent->p = this;
+		}
+		else {
+			child = this->l;
+			this->l = parent;
+			this->p = grandpa;
+			parent->r = child;
+			parent->p = this;
+		}
+		if (grandpa->l == parent) {
+			grandpa->l = this;
+		}
+		else {
+			grandpa->r = this;
+		}
+		parent->update();
+		this->update();
+		grandpa->update();
+	}
+
+	void splay() {
+		if (this->p == nullptr) {
 			return;
 		}
 
-		MSTNode* n1, * n2, * n3, * n4;
-		n1 = edge;
-		while (n1->prev != nullptr) {
-			n1 = n1->prev;
+		SeriesNode* parent = this->p;
+		SeriesNode* grandpa = this->p->p;
+		if (grandpa != nullptr) {
+			if ((grandpa->l == parent) && (parent->l == this)) {
+				parent->rotate();
+			}
+			else {
+				rotate();
+			}
 		}
-		n2 = edge->prev;
+		this->rotate();
+		splay();
+	}
 
-		n3 = edge;
-		n4 = edge;
-		while (n4->next == nullptr)
+	void rooting() {
+		splay();
+		SeriesNode* left = this->l;
+		this->l = nullptr;
+		update();
+		left->p = nullptr;
+		SeriesNode* right = this->r;
+		while (right->r != nullptr)
 		{
-			n4 = n4->next;
+			right = right->r;
 		}
-		n2->next = nullptr;
-		n3->prev = nullptr;
 
-		n4->next = n1;
-		n1->prev = n4;
+		right->splay();
+		right->r = left;
+		right->update();
 	}
-
-	void addEdge(const Edge& e) {
-		if (mst.find({ e.a,e.a }) == mst.end()) {
-			addNode(e.a);
-		}
-		if (mst.find({ e.b,e.b }) == mst.end()) {
-			addNode(e.b);
-		}
-
-		rooting({ e.a,e.a });
-		rooting({ e.b,e.b });
-		MSTNode* n1, * n2, * n3, * n4;
-		n1 = mst[{e.a, e.a}];
-		n2 = n1->next;
-		n3 = mst[{e.b, e.b}];
-		n4 = n3;
-		while (n4->next != nullptr) {
-			n4 = n4->next;
-		}
-
-		MSTNode* e1, * e2;
-		e1 = new MSTNode{ n1, {e.a, e.b}, n3 };
-		e2 = new MSTNode{ n4, {e.b, e.a}, n2 };
-
-		n1->next = e1;
-		if (n2 != nullptr) {
-			n2->prev = e2;
-		}
-		n3->prev = e1;
-		n4->next = e2;
-	}
-	
-	void removeEdge(const Edge& e);
-
 };
 
-class Forest {
-	class NoEdge :std::exception {};
-	set<Edge> extraEdges;
-	MST mst;
-	map<Node, Forest*> subforest;
+// global variables
+unsigned int N, Q, numComponent, F{ 0 };
+map<Edge, int> levels;
 
-public:
-	Forest(MST& mst) :mst(mst) {}
+// function 
+bool isMST(LeveledEdge);
+bool isExtraEdge(Edge);
+void removeMST(LeveledEdge);
+void insertMST(LeveledEdge);
+LeveledEdge findAlterEdge(LeveledEdge);
+bool isSameComponent(Node a, Node b);
 
-	~Forest() {
-		for (auto iter : subforest) {
-			delete iter.second;
+int main() {
+	using namespace std;
+	cin >> N >> Q;
+	numComponent = N;
+
+	for (unsigned int i = 0; i < Q; i++) {
+		unsigned int a, b, x, y;
+		std::cin >> a >> b;
+		x = (a ^ F) % N;
+		y = (b ^ F) % N;
+
+		if (x < y) {
+			// remove edge
+			//if (mst.find(LevelArk(x, y, 0)) != mst.end()) {
+			if (isMST(LeveledEdge(x, y, 0))) {
+				int level = levels[Edge(x, y)];
+				levels.erase(Edge(x, y));
+				for (int i = level; i >= 0; i--) {
+					removeMST(LeveledEdge(x, y, 0));
+				}
+
+				LeveledEdge alterEdge;
+				bool found = false;
+				for (int i = level; i >= 0; i--) {
+					LeveledEdge le(x, y, i);
+					try {
+						alterEdge = findAlterEdge(le);
+						found = true;
+						break;
+					}
+					catch (NoEdge ne) {
+						continue;
+					}
+				}
+
+				if (found) {
+					while (alterEdge.level >= 0) {
+						insertMST(alterEdge);
+						--alterEdge.level;
+					}
+				}
+				else {
+					++numComponent;
+				}
+			}
+			else if (isExtraEdge(Edge(x, y))) {
+				// remove extra edge
+				// TODO
+			}
+
+			// add edge
+			if (isSameComponent(x, y)) {
+				// add extra edge
+				// TODO
+			}
+			else {
+				insertMST(LeveledEdge(x, y, 0));
+				--numComponent;
+			}
 		}
-		for (auto iter : mst) {
-			delete iter.second;
+		else {
+			cout << isSameComponent(x, y) << endl;
 		}
+
+		F += numComponent;
 	}
+	// terminate
+	return 0;
+}
 
-	void addMSTEdge(const Edge& e) {
-		rooting({ e.a, e.a });
-		rooting({ e.b, e.b });
-		
-	}
-	
-
-
-	Edge findAlterEdge(Edge& e) {
-		rooting(e);
-		
-		
-
-	}
-
-	
-
-
-
-	
-	
-};
-
-int* roots;
-
-bool findSet();
-void unionSet();
-
-
+// definition

@@ -24,6 +24,7 @@
     <ProjectGuid>{6a46f97f-c9fd-49be-8f82-03025c7d3629}</ProjectGuid>
     <RootNamespace>My17465dynamicConnectionAndQuery</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>17465_dynamicConnectivityAndQuery</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
