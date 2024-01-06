@@ -64,19 +64,32 @@ class NoEdge :std::exception {};
 class SeriesNode {
 	LeveledArk ark;
 	SeriesNode* p, * l, * r;
-	int count;
-	SeriesNode* head;
+	int size; 
+	SeriesNode* head; // leftmost vertex
 	bool isVertex;
 	
 	void update() {
-		this->count = 1 + l->count + r->count;
-		if (l->head != nullptr) {
+		// update size
+		this->size = 1;
+		if (this->l != nullptr)
+		{
+			this->size += l->size;
+		}
+		if (this->r != nullptr)
+		{
+			this->size += r->size;
+		}
+		// update head
+		if (l != nullptr && l->head != nullptr)
+		{
 			this->head = l->head;
 		}
-		else if (this->isVertex) {
+		else if (this->isVertex)
+		{
 			this->head = this;
 		}
-		else {
+		else if (r != nullptr)
+		{
 			this->head = r->head;
 		}
 	}
@@ -121,11 +134,11 @@ class SeriesNode {
 		SeriesNode* parent = this->p;
 		SeriesNode* grandpa = this->p->p;
 		if (grandpa != nullptr) {
-			if ((grandpa->l == parent) && (parent->l == this)) {
+			if ((grandpa->l == parent) == (parent->l == this)) {
 				parent->rotate();
 			}
 			else {
-				rotate();
+				this->rotate();
 			}
 		}
 		this->rotate();
