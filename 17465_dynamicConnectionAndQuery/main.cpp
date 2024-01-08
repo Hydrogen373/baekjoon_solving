@@ -25,7 +25,7 @@ public:
 	//}
 
 };
-class Edge :Ark {
+class Edge :public Ark {
 public:
 	Edge() :Edge(0, 0) {
 	}
@@ -38,7 +38,7 @@ public:
 		if (a > b) std::swap(a, b);
 	}
 };
-class LeveledArk :Ark {
+class LeveledArk :public Ark {
 public:
 	int level;
 	LeveledArk() :LeveledArk(0, 0, 0) {
@@ -51,7 +51,7 @@ public:
 		else return this->b < other.b;
 	}
 };
-class LeveledEdge :LeveledArk {
+class LeveledEdge :public LeveledArk {
 public:
 	int level;
 	LeveledEdge() :LeveledEdge(0, 0, 0) {
@@ -62,6 +62,7 @@ public:
 };
 class NoEdge :std::exception {};
 class SeriesNode {
+public:
 	LeveledArk ark;
 	SeriesNode* p, * l, * r;
 	int size; 
@@ -166,11 +167,39 @@ class SeriesNode {
 // global variables
 unsigned int N, Q, numComponent, F{ 0 };
 map<Edge, int> levels;
+map<LeveledArk, SeriesNode*> mst;
 
 // function 
-bool isMST(LeveledEdge);
-bool isExtraEdge(Edge);
-void removeMST(LeveledEdge);
+bool isMST(LeveledEdge le) {
+	return mst.find(le) != mst.end();
+}
+bool isExtraEdge(Edge e) {
+	return levels.find(e) != levels.end();
+}
+void removeMST(LeveledEdge le) {
+	Node a = le.a, b = le.b;
+	int level = le.level;
+
+	SeriesNode* e1 = mst[LeveledArk(a, b, level)];
+	SeriesNode* e2 = mst[LeveledArk(b, a, level)];
+
+	e1->rooting();
+	e1->splay();
+	e1->r->p = nullptr;
+
+	e2->splay();
+	e2->l->p = nullptr;
+	e2->l = nullptr;
+	e2->r->p = nullptr;
+	e2->r = nullptr;
+
+	mst.erase(e1->ark);
+	mst.erase(e2->ark);
+	levels.erase(Edge(e1->ark));
+
+	delete e1, e2;
+	return;
+}
 void insertMST(LeveledEdge);
 LeveledEdge findAlterEdge(LeveledEdge);
 bool isSameComponent(Node a, Node b);
@@ -188,7 +217,6 @@ int main() {
 
 		if (x < y) {
 			// remove edge
-			//if (mst.find(LevelArk(x, y, 0)) != mst.end()) {
 			if (isMST(LeveledEdge(x, y, 0))) {
 				int level = levels[Edge(x, y)];
 				levels.erase(Edge(x, y));
