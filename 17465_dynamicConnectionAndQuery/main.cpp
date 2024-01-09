@@ -1,213 +1,91 @@
 #include<iostream>
 #include<map>
 #include<set>
+#include<vector>
+#include<fstream>
+#include<cassert>
 
-// structure
-using std::map;
-using std::set;
-using Node = unsigned int;
+using namespace std;
+
+using Node = int;
+
 class Ark {
 public:
 	Node a;
 	Node b;
-	Ark() : Ark(0, 0) {
-	}
-	Ark(Node a, Node b) : a(a), b(b) {
-	}
-	bool operator<(const Ark& other) {
-		return this->a < other.a || this->a == other.a && this->b < other.b;
-	}
-	//bool operator>(const Ark& other) {
-	//	return !(*this < other);
-	//}
-	//bool operator==(const Ark& other) {
-	//	return !((*this < other) && (*this < other));
-	//}
-
+	Ark();
+	Ark(Node, Node);
+	bool operator<(const Ark& other);
 };
-class Edge :public Ark {
+class Edge {
 public:
-	Edge() :Edge(0, 0) {
-	}
-	Edge(Node a, Node b) :Ark(a, b) {
-		if (a > b) std::swap(a, b);
-	}
-	Edge(const Ark& ark) {
-		this->a = ark.a;
-		this->b = ark.b;
-		if (a > b) std::swap(a, b);
-	}
+	Node a;
+	Node b;
+	Edge();
+	Edge(Node, Node);
+	Edge(const Ark&);
+	bool operator<(const Edge& other);
 };
-class LeveledArk :public Ark {
-public:
-	int level;
-	LeveledArk() :LeveledArk(0, 0, 0) {
-	}
-	LeveledArk(Node a, Node b, int level) :Ark(a, b), level(level) {
-	}
-	bool operator<(const LeveledArk& other) {
-		if (this->level != other.level) return this->level < other.level;
-		else if (this->a != other.a) return this->a < other.a;
-		else return this->b < other.b;
-	}
-};
-class LeveledEdge :public LeveledArk {
-public:
-	int level;
-	LeveledEdge() :LeveledEdge(0, 0, 0) {
-	}
-	LeveledEdge(Node a, Node b, int level) :LeveledArk(a, b, level) {
-		if (a > b) std::swap(a, b);
-	}
-};
-class NoEdge :std::exception {};
 class SeriesNode {
 public:
-	LeveledArk ark;
 	SeriesNode* p, * l, * r;
+	Ark ark;
 	int size; 
-	SeriesNode* head; // leftmost vertex
-	bool isVertex;
-	
-	void update() {
-		// update size
-		this->size = 1;
-		if (this->l != nullptr)
-		{
-			this->size += l->size;
-		}
-		if (this->r != nullptr)
-		{
-			this->size += r->size;
-		}
-		// update head
-		if (l != nullptr && l->head != nullptr)
-		{
-			this->head = l->head;
-		}
-		else if (this->isVertex)
-		{
-			this->head = this;
-		}
-		else if (r != nullptr)
-		{
-			this->head = r->head;
-		}
-	}
+	bool isVertex; 
+	SeriesNode* leftmostVertex;
 
-	void rotate() {
-		if (this->p == nullptr) {
-			return;
-		}
-		SeriesNode* child;
-		SeriesNode* grandpa = p->p;
-		SeriesNode* parent = this->p;
-		if (p->l == this) {
-			child = this->r;
-			this->r = parent;
-			this->p = grandpa;
-			parent->l = child;
-			parent->p = this;
-		}
-		else {
-			child = this->l;
-			this->l = parent;
-			this->p = grandpa;
-			parent->r = child;
-			parent->p = this;
-		}
-		if (grandpa->l == parent) {
-			grandpa->l = this;
-		}
-		else {
-			grandpa->r = this;
-		}
-		parent->update();
-		this->update();
-		grandpa->update();
-	}
+	SeriesNode(const Ark&);
+	static void join(SeriesNode*, SeriesNode*);
+	void splay();
+	void rotate();
+	void makeHead();
+	void update();
+	SeriesNode* getRoot();
+	bool operator<(const SeriesNode& other);
+	void print(int);
 
-	void splay() {
-		if (this->p == nullptr) {
-			return;
-		}
-
-		SeriesNode* parent = this->p;
-		SeriesNode* grandpa = this->p->p;
-		if (grandpa != nullptr) {
-			if ((grandpa->l == parent) == (parent->l == this)) {
-				parent->rotate();
-			}
-			else {
-				this->rotate();
-			}
-		}
-		this->rotate();
-		splay();
-	}
-
-	void rooting() {
-		splay();
-		SeriesNode* left = this->l;
-		this->l = nullptr;
-		update();
-		left->p = nullptr;
-		SeriesNode* right = this->r;
-		while (right->r != nullptr)
-		{
-			right = right->r;
-		}
-
-		right->splay();
-		right->r = left;
-		right->update();
-	}
+};
+class NoEdge :std::exception {};
+class MST {
+private:
+	void levelupMST(SeriesNode*);
+	SeriesNode* addNode(Ark);
+public:
+	int level = 0;
+	~MST();
+	set<Node> extraEdges[100'000];
+	map<Ark, SeriesNode*> mp;
+	void insert(Edge);
+	void remove(Edge);
+	bool isSameComponent(Node a, Node b);
+	Edge findAlterEdge(Edge);
+};
+struct EdgeInfo{
+	bool mst;
+	int level;
+	EdgeInfo();
+	EdgeInfo(bool, int);
 };
 
-// global variables
+bool operator<(const Ark& a, const Ark& b) {
+	return a.a < b.a || a.a == b.a && a.b < b.b;
+}
+bool operator<(const Edge& a, const Edge& b) {
+	return a.a < b.a || a.a == b.a && a.b < b.b;
+}
+
+// variables
 unsigned int N, Q, numComponent, F{ 0 };
-map<Edge, int> levels;
-map<LeveledArk, SeriesNode*> mst;
-
-// function 
-bool isMST(LeveledEdge le) {
-	return mst.find(le) != mst.end();
-}
-bool isExtraEdge(Edge e) {
-	return levels.find(e) != levels.end();
-}
-void removeMST(LeveledEdge le) {
-	Node a = le.a, b = le.b;
-	int level = le.level;
-
-	SeriesNode* e1 = mst[LeveledArk(a, b, level)];
-	SeriesNode* e2 = mst[LeveledArk(b, a, level)];
-
-	e1->rooting();
-	e1->splay();
-	e1->r->p = nullptr;
-
-	e2->splay();
-	e2->l->p = nullptr;
-	e2->l = nullptr;
-	e2->r->p = nullptr;
-	e2->r = nullptr;
-
-	mst.erase(e1->ark);
-	mst.erase(e2->ark);
-	levels.erase(Edge(e1->ark));
-
-	delete e1, e2;
-	return;
-}
-void insertMST(LeveledEdge);
-LeveledEdge findAlterEdge(LeveledEdge);
-bool isSameComponent(Node a, Node b);
+map<Edge, EdgeInfo> info;
+MST mst[20];
 
 int main() {
-	using namespace std;
 	cin >> N >> Q;
 	numComponent = N;
+
+	for (int i = 0; i < 20; i++) {
+		mst[i].level = i;
+	}
 
 	for (unsigned int i = 0; i < Q; i++) {
 		unsigned int a, b, x, y;
@@ -216,55 +94,75 @@ int main() {
 		y = (b ^ F) % N;
 
 		if (x < y) {
-			// remove edge
-			if (isMST(LeveledEdge(x, y, 0))) {
-				int level = levels[Edge(x, y)];
-				levels.erase(Edge(x, y));
-				for (int i = level; i >= 0; i--) {
-					removeMST(LeveledEdge(x, y, 0));
-				}
+			Edge edge = Edge(x, y);
+			auto edgeinfo = info.find(edge);
+			bool taskIsRemoving = (edgeinfo != info.end());
+			bool edgeIsMST;
+			if (taskIsRemoving) {
+				int L = edgeinfo->second.level;
+				edgeIsMST = edgeinfo->second.mst;
+				info.erase(edgeinfo);
 
-				LeveledEdge alterEdge;
-				bool found = false;
-				for (int i = level; i >= 0; i--) {
-					LeveledEdge le(x, y, i);
-					try {
-						alterEdge = findAlterEdge(le);
-						found = true;
-						break;
+				if (edgeIsMST) {
+					for (int i = L; i >= 0; i--) {
+						mst[i].remove(edge);
 					}
-					catch (NoEdge ne) {
-						continue;
-					}
-				}
 
-				if (found) {
-					while (alterEdge.level >= 0) {
-						insertMST(alterEdge);
-						--alterEdge.level;
+					// find alterEdge
+					bool found = false;
+					int alterLevel;
+					Edge alterEdge;
+					for (int i = L; i >= 0; i--) {
+						try {
+							alterEdge = mst[i].findAlterEdge(edge);
+							alterLevel = i;
+							found = true;
+							break;
+						}
+						catch (const NoEdge&) {
+							continue;
+						}
+					}
+
+					if (found) {
+						info[alterEdge].mst = true;
+						for (int i = 0; i < alterLevel; i++) {
+							mst[i].insert(alterEdge);
+						}
+					}
+					else {
+						numComponent++;
 					}
 				}
 				else {
-					++numComponent;
+					mst[L].extraEdges[x].erase(y);
+					mst[L].extraEdges[y].erase(x);
 				}
-			}
-			else if (isExtraEdge(Edge(x, y))) {
-				// remove extra edge
-				// TODO
-			}
-
-			// add edge
-			if (isSameComponent(x, y)) {
-				// add extra edge
-				// TODO
+				
 			}
 			else {
-				insertMST(LeveledEdge(x, y, 0));
-				--numComponent;
+				edgeIsMST = !(mst[0].isSameComponent(x, y));
+				info.insert(make_pair(edge, EdgeInfo(edgeIsMST, 0)));
+				if (edgeIsMST) {
+					mst[0].insert(edge);
+					numComponent--;
+				}
+				else {
+					mst[0].extraEdges[x].insert(y);
+					mst[0].extraEdges[y].insert(x);
+				}
+
+				// debug
+				auto tmp = mst[0].mp[Ark(x, x)];
+				tmp->splay();
+				tmp->print(0);
+
 			}
+
+
 		}
 		else {
-			cout << isSameComponent(x, y) << endl;
+			cout << mst[0].isSameComponent(x, y) << endl;
 		}
 
 		F += numComponent;
@@ -273,4 +171,388 @@ int main() {
 	return 0;
 }
 
-// definition
+Ark::Ark() :Ark(0, 0)
+{
+}
+
+Ark::Ark(Node a, Node b) :
+	a(a), b(b)
+{
+}
+
+bool Ark::operator<(const Ark& other)
+{
+	return this->a < other.a || this->a == other.a && this->b < other.b;
+}
+
+Edge::Edge() :Edge(0, 0)
+{
+}
+
+Edge::Edge(Node a, Node b) :a(a), b(b)
+{
+	if (a > b) swap(a, b);
+}
+
+Edge::Edge(const Ark& ark) :Edge(ark.a, ark.b)
+{
+}
+
+bool Edge::operator<(const Edge& other)
+{
+	return this->a < other.a || this->a == other.b && this->b < other.b;
+
+}
+
+SeriesNode::SeriesNode(const Ark& ark) :
+	p(nullptr), l(nullptr), r(nullptr),
+	ark(ark),
+	size(1),
+	isVertex(false),
+	leftmostVertex(nullptr)
+{
+	if (ark.a == ark.b) {
+		isVertex = true;
+		leftmostVertex = this;
+	}
+}
+
+void SeriesNode::join(SeriesNode* a, SeriesNode* b)
+{
+	a = a->getRoot();
+	b = b->getRoot();
+	while (a->r != nullptr)
+	{
+		a = a->r;
+	}
+	a->splay();
+	a->r = b;
+	b->p = a;
+	a->update();
+}
+
+void SeriesNode::splay()
+{
+	// ¿©±â ¾îµò°¡ ¿À·ù °íÄ¡¼À
+	if (this->p == nullptr) {
+		return;
+	}
+	SeriesNode* parent = this->p;
+	SeriesNode* grandpa = this->p->p;
+	if (this->p->p != nullptr) {
+		if ((grandpa->l == p) == (parent->l == this)) {
+			parent->rotate();
+		}
+		else {
+			this->rotate();
+		}
+	}
+	this->rotate();
+	this->splay();
+}
+
+void SeriesNode::rotate()
+{
+	if (this->p == nullptr) {
+		return;
+	}
+	SeriesNode* parent = this->p;
+	SeriesNode* grandpa = this->p->p;
+
+	if (grandpa != nullptr) {
+		if (grandpa->l == parent) {
+			grandpa->l = this;
+		}
+		else {
+			grandpa->r = this;
+		}
+	}
+
+	if (parent->l == this) {
+		parent->l = this->r;
+		this->r = parent;
+	}
+	else {
+		parent->r = this->l;
+		this->l = parent;
+	}
+	parent->p = this;
+	this->p = grandpa;
+
+	parent->update();
+	this->update();
+	return;
+}
+
+void SeriesNode::makeHead()
+{
+	// debug
+	//this->getRoot()->print(0);
+
+	splay();
+
+	// debug
+	//cout << "this!!";
+	//this->getRoot()->print(0);
+
+	if (this->l == nullptr) {
+		return;
+	}
+	SeriesNode* left = this->l;
+	this->l = nullptr;
+	left->p = nullptr;
+	this->update();
+
+	//// debug
+	//this->getRoot()->print(0);
+
+	SeriesNode* right = this;
+	while (right->r != nullptr)
+	{
+		right = right->r;
+	}
+	right->splay();
+
+	//// debug
+	//this->getRoot()->print(0);
+
+
+	assert(right->r == nullptr);
+	
+	right->r = left;
+	left->p = right;
+
+	right->update();
+}
+
+void SeriesNode::update()
+{
+	this->size = 1;
+	this->leftmostVertex = nullptr;
+	if (l != nullptr) {
+		size += l->size;
+		this->leftmostVertex = l->leftmostVertex;
+	}
+	if (leftmostVertex == nullptr && this->isVertex) {
+		leftmostVertex = this;
+	}
+	if (r != nullptr) {
+		size += r->size;
+		if (leftmostVertex == nullptr) {
+			leftmostVertex = r->leftmostVertex;
+		}
+	}
+}
+
+SeriesNode* SeriesNode::getRoot()
+{
+	SeriesNode* result = this;
+	while (result->p != nullptr) {
+		result = result->p;
+	}
+	return result;
+}
+
+void SeriesNode::print(int i = 0)
+{
+	if (i == 0) {
+		cout << "############################";
+		cout << endl;
+	}
+	if (this->r != nullptr) {
+		this->r->print(i + 1);
+	}
+	else {
+		cout << endl;
+	}
+	for (int j = 0; j < i; j++) {
+		cout << '=';
+	}
+	cout << this->ark.a << this->ark.b << endl;
+	if (this->l != nullptr) {
+		this->l->print(i + 1);
+	}
+	else {
+		cout << endl;
+	}
+	if (i == 0) {
+		cout << "############################";
+		cout << endl;
+	}
+	
+}
+
+bool SeriesNode::operator<(const SeriesNode& other)
+{
+	return this->ark < other.ark;
+}
+
+void MST::levelupMST(SeriesNode* series)
+{
+	if (series == nullptr) return;
+	levelupMST(series->l);
+	Edge edge(series->ark.a, series->ark.b);
+	if (info[edge].level == this->level && edge.a != edge.b) {
+		info[edge].level++;
+		mst[level + 1].insert(edge);
+	}
+	levelupMST(series->r);
+}
+
+SeriesNode* MST::addNode(Ark ark) {
+	SeriesNode* node = new SeriesNode(ark);
+	mp.insert(make_pair(ark, node));
+	return node;
+}
+
+MST::~MST()
+{
+	for (auto iter : mp) {
+		delete iter.second;
+	}
+}
+
+void MST::insert(Edge edge)
+{
+	/*
+	* This method assumes that
+	* (a,a) and (b,b) are disjoint.
+	* mst doesn't contain (a,b) and (b,a).
+	*/
+	SeriesNode* na, * nb;
+	SeriesNode* ab, * ba;
+
+	{
+		Ark tmp(edge.a, edge.a);
+		auto iter = mp.find(tmp);
+		if (iter == mp.end()) {
+			na = addNode(tmp);
+		}
+		else {
+			na = iter->second;
+		}
+		tmp = Ark(edge.b, edge.b);
+		iter = mp.find(tmp);
+		if (iter == mp.end()) {
+			nb = addNode(tmp);
+		}
+		else {
+			nb = iter->second;
+		}
+	}
+
+	ab = addNode(Ark(edge.a, edge.b));
+	ba = addNode(Ark(edge.b, edge.a));
+
+	na->makeHead();
+	nb->makeHead();
+
+	na->splay();
+	nb->splay();
+
+	//SeriesNode::join(na, ab);
+	//SeriesNode::join(ab, nb);
+	//SeriesNode::join(nb, ba);
+
+	ab->l = na;
+	na->p = ab;
+	ab->update();
+
+	nb->l = ab;
+	ab->p = nb;
+	nb->update();
+
+	ba->l = nb;
+	nb->p = ba;
+	ba->update();
+}
+
+void MST::remove(Edge edge)
+{
+	Node a = edge.a, b = edge.b;
+	SeriesNode* ab, * ba;
+	ab = mp[Ark(a, b)];
+	ba = mp[Ark(b, a)];
+
+
+	ab->makeHead();
+	ab->splay();
+	ab->r->p = nullptr;
+	ab->r = nullptr;
+	ab->update();
+
+	ba->splay();
+	ba->l->p = nullptr;
+	ba->l = nullptr;
+	ba->r->p = nullptr;
+	ba->r = nullptr;
+	ba->update();
+
+	mp.erase(Ark(a, b));
+	mp.erase(Ark(b, a));
+
+	delete ab, ba;
+}
+
+bool MST::isSameComponent(Node a, Node b)
+{
+	SeriesNode* aa, * bb;
+	if (mp.find(Ark(a, a)) == mp.end() || mp.find(Ark(b, b)) == mp.end()) {
+		return false;
+	}
+
+	aa = mp[Ark(a, a)];
+	bb = mp[Ark(b, b)];
+	return aa->getRoot() == bb->getRoot();
+}
+
+Edge MST::findAlterEdge(Edge edge)
+{
+	Node a = edge.a, b = edge.b;
+
+	SeriesNode* aa, * bb;
+	aa = mp[Ark(a, a)];
+	bb = mp[Ark(b, b)];
+	aa->splay();
+	bb->splay();
+	SeriesNode* smallerSeries;
+	smallerSeries = aa->size < bb->size ? aa : bb;
+
+	levelupMST(aa);
+
+	SeriesNode* iter = smallerSeries;
+	iter->splay();
+	iter->leftmostVertex;
+
+	while (iter != nullptr)
+	{
+		Node u = iter->ark.a;
+		auto tmp = extraEdges[u];
+
+		for (Node v : tmp) {
+			extraEdges[u].erase(v);
+			extraEdges[v].erase(u);
+			if (mst[level + 1].isSameComponent(u, v)) {
+				mst[level + 1].extraEdges[u].insert(v);
+				mst[level + 1].extraEdges[v].insert(u);
+				info[Edge(u, v)].level++;
+				continue;
+			}
+			else {
+				return Edge(u, v);
+			}
+
+		}
+		iter->splay();
+		iter = iter->r->leftmostVertex;
+	}
+
+	throw NoEdge();
+}
+
+EdgeInfo::EdgeInfo() :EdgeInfo(0, 0) {}
+
+EdgeInfo::EdgeInfo(bool mst, int level) :
+	mst(mst), level(level)
+{
+}
