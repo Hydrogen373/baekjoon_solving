@@ -233,7 +233,6 @@ void SeriesNode::join(SeriesNode* a, SeriesNode* b)
 
 void SeriesNode::splay()
 {
-	// ¿©±â ¾îµò°¡ ¿À·ù °íÄ¡¼À
 	if (this->p == nullptr) {
 		return;
 	}
@@ -256,6 +255,7 @@ void SeriesNode::rotate()
 	if (this->p == nullptr) {
 		return;
 	}
+	SeriesNode* child;
 	SeriesNode* parent = this->p;
 	SeriesNode* grandpa = this->p->p;
 
@@ -269,13 +269,14 @@ void SeriesNode::rotate()
 	}
 
 	if (parent->l == this) {
-		parent->l = this->r;
+		parent->l = child = this->r;
 		this->r = parent;
 	}
 	else {
-		parent->r = this->l;
+		parent->r = child = this->l;
 		this->l = parent;
 	}
+	child->p = parent;
 	parent->p = this;
 	this->p = grandpa;
 
