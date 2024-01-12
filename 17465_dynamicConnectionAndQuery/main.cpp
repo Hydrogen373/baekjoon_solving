@@ -130,33 +130,34 @@ int main() {
 							mst[i].insert(alterEdge);
 						}
 					}
-					else {
+					else { // found == false
 						numComponent++;
 					}
 				}
-				else {
+				else { // edgeIsMST == false
 					mst[L].extraEdges[x].erase(y);
 					mst[L].extraEdges[y].erase(x);
 				}
 				
 			}
-			else {
+			else { // taskIsRemoving == false
 				edgeIsMST = !(mst[0].isSameComponent(x, y));
 				info.insert(make_pair(edge, EdgeInfo(edgeIsMST, 0)));
 				if (edgeIsMST) {
 					mst[0].insert(edge);
 					numComponent--;
 				}
-				else {
+				else { // edgeIsMST == false
 					mst[0].extraEdges[x].insert(y);
 					mst[0].extraEdges[y].insert(x);
 				}
 
+#ifdef debug
 				// debug
 				auto tmp = mst[0].mp[Ark(x, x)];
 				tmp->splay();
 				tmp->print(0);
-
+#endif
 			}
 
 
@@ -381,7 +382,7 @@ void MST::levelupMST(SeriesNode* series)
 	if (series == nullptr) return;
 	levelupMST(series->l);
 	Edge edge(series->ark.a, series->ark.b);
-	if (info[edge].level == this->level && edge.a != edge.b) {
+	if (edge.a != edge.b && info[edge].level == this->level) {
 		info[edge].level++;
 		mst[level + 1].insert(edge);
 	}
@@ -507,7 +508,7 @@ Edge MST::findAlterEdge(Edge edge)
 	SeriesNode* smallerSeries;
 	smallerSeries = aa->size < bb->size ? aa : bb;
 
-	levelupMST(aa);
+	levelupMST(smallerSeries);
 
 	SeriesNode* iter = smallerSeries;
 	iter->splay();
@@ -533,7 +534,11 @@ Edge MST::findAlterEdge(Edge edge)
 
 		}
 		iter->splay();
-		iter = iter->r->leftmostVertex;
+		if (iter->r != nullptr)
+		{
+			iter = iter->r->leftmostVertex;
+		}
+		else break;
 	}
 
 	throw NoEdge();
