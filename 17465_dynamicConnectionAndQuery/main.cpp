@@ -276,7 +276,9 @@ void SeriesNode::rotate()
 		parent->r = child = this->l;
 		this->l = parent;
 	}
-	child->p = parent;
+	if (child != nullptr) {
+		child->p = parent;
+	}
 	parent->p = this;
 	this->p = grandpa;
 
@@ -287,14 +289,7 @@ void SeriesNode::rotate()
 
 void SeriesNode::makeHead()
 {
-	// debug
-	//this->getRoot()->print(0);
-
 	splay();
-
-	// debug
-	//cout << "this!!";
-	//this->getRoot()->print(0);
 
 	if (this->l == nullptr) {
 		return;
@@ -304,19 +299,12 @@ void SeriesNode::makeHead()
 	left->p = nullptr;
 	this->update();
 
-	//// debug
-	//this->getRoot()->print(0);
-
 	SeriesNode* right = this;
 	while (right->r != nullptr)
 	{
 		right = right->r;
 	}
 	right->splay();
-
-	//// debug
-	//this->getRoot()->print(0);
-
 
 	assert(right->r == nullptr);
 	
