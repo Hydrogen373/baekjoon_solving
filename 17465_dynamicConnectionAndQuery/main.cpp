@@ -1,4 +1,3 @@
-#define debug
 #include<iostream>
 #include<map>
 #include<set>
@@ -329,6 +328,7 @@ void SeriesNode::makeHead()
 void SeriesNode::update()
 {
 	this->size = 1;
+	this->leftmostVertex = nullptr;
 	if (l!=nullptr) this->size += l->size;
 	if (r!=nullptr) this->size += r->size;
 
