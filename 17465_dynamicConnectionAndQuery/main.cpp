@@ -1,3 +1,4 @@
+#define debug
 #include<iostream>
 #include<map>
 #include<set>
@@ -23,7 +24,6 @@ public:
 	Node b;
 	Edge();
 	Edge(Node, Node);
-	Edge(const Ark&);
 	bool operator<(const Edge& other);
 };
 class SeriesNode {
@@ -93,6 +93,11 @@ int main() {
 		x = (a ^ F) % N;
 		y = (b ^ F) % N;
 
+#ifdef debug
+		cout << "#" << i << endl;
+		cout << "\tx: " << x << ", y: " << y << endl;
+#endif
+
 		if (x < y) {
 			Edge edge = Edge(x, y);
 			auto edgeinfo = info.find(edge);
@@ -102,6 +107,11 @@ int main() {
 				int L = edgeinfo->second.level;
 				edgeIsMST = edgeinfo->second.mst;
 				info.erase(edgeinfo);
+#ifdef debug
+				cout << "remove " << x << " " << y << endl;
+				cout << "\tMST: " << edgeIsMST << endl;
+				cout << "\tLevel: " << L << endl;
+#endif
 
 				if (edgeIsMST) {
 					for (int i = L; i >= 0; i--) {
@@ -110,12 +120,10 @@ int main() {
 
 					// find alterEdge
 					bool found = false;
-					int alterLevel;
 					Edge alterEdge;
 					for (int i = L; i >= 0; i--) {
 						try {
 							alterEdge = mst[i].findAlterEdge(edge);
-							alterLevel = i;
 							found = true;
 							break;
 						}
@@ -125,8 +133,13 @@ int main() {
 					}
 
 					if (found) {
+#ifdef debug
+						assert(alterEdge.a < alterEdge.b);
+						cout << "insert alter:  " << alterEdge.a
+							 << " " << alterEdge.b << endl;
+#endif
 						info[alterEdge].mst = true;
-						for (int i = 0; i < alterLevel; i++) {
+						for (int i = 0; i <= info[alterEdge].level; i++) {
 							mst[i].insert(alterEdge);
 						}
 					}
@@ -142,6 +155,11 @@ int main() {
 			}
 			else { // taskIsRemoving == false
 				edgeIsMST = !(mst[0].isSameComponent(x, y));
+#ifdef debug
+				cout << "insert " << x << " " << y << endl;
+				cout << "\tMST: " << edgeIsMST << endl;
+				assert(edge.a <= edge.b);
+#endif
 				info.insert(make_pair(edge, EdgeInfo(edgeIsMST, 0)));
 				if (edgeIsMST) {
 					mst[0].insert(edge);
@@ -152,12 +170,6 @@ int main() {
 					mst[0].extraEdges[y].insert(x);
 				}
 
-#ifdef debug
-				// debug
-				auto tmp = mst[0].mp[Ark(x, x)];
-				tmp->splay();
-				tmp->print(0);
-#endif
 			}
 
 
@@ -192,11 +204,8 @@ Edge::Edge() :Edge(0, 0)
 
 Edge::Edge(Node a, Node b) :a(a), b(b)
 {
-	if (a > b) swap(a, b);
-}
-
-Edge::Edge(const Ark& ark) :Edge(ark.a, ark.b)
-{
+	if (this->a > this->b)
+		swap(this->a, this->b);
 }
 
 bool Edge::operator<(const Edge& other)
@@ -213,8 +222,8 @@ SeriesNode::SeriesNode(const Ark& ark) :
 	leftmostVertex(nullptr)
 {
 	if (ark.a == ark.b) {
-		isVertex = true;
-		leftmostVertex = this;
+		this->isVertex = true;
+		this->leftmostVertex = this;
 	}
 }
 
@@ -307,7 +316,9 @@ void SeriesNode::makeHead()
 	}
 	right->splay();
 
+#ifdef debug
 	assert(right->r == nullptr);
+#endif
 	
 	right->r = left;
 	left->p = right;
@@ -318,20 +329,15 @@ void SeriesNode::makeHead()
 void SeriesNode::update()
 {
 	this->size = 1;
-	this->leftmostVertex = nullptr;
-	if (l != nullptr) {
-		size += l->size;
+	if (l!=nullptr) this->size += l->size;
+	if (r!=nullptr) this->size += r->size;
+
+	if (l != nullptr && l->leftmostVertex != nullptr)
 		this->leftmostVertex = l->leftmostVertex;
-	}
-	if (leftmostVertex == nullptr && this->isVertex) {
-		leftmostVertex = this;
-	}
-	if (r != nullptr) {
-		size += r->size;
-		if (leftmostVertex == nullptr) {
-			leftmostVertex = r->leftmostVertex;
-		}
-	}
+	else if (this->isVertex)
+		this->leftmostVertex = this;
+	else if (r != nullptr)
+		this->leftmostVertex = r->leftmostVertex;
 }
 
 SeriesNode* SeriesNode::getRoot()
@@ -512,11 +518,18 @@ Edge MST::findAlterEdge(Edge edge)
 
 	SeriesNode* iter = smallerSeries;
 	iter->splay();
-	iter->leftmostVertex;
+	iter = iter->leftmostVertex;
+
+#ifdef debug
+	assert(iter != nullptr);
+#endif
 
 	while (iter != nullptr)
 	{
 		Node u = iter->ark.a;
+#ifdef debug
+		cout << "find alter edge " << u << " -> ?" << endl;
+#endif
 		auto tmp = extraEdges[u];
 
 		for (Node v : tmp) {
@@ -526,6 +539,11 @@ Edge MST::findAlterEdge(Edge edge)
 				mst[level + 1].extraEdges[u].insert(v);
 				mst[level + 1].extraEdges[v].insert(u);
 				info[Edge(u, v)].level++;
+#ifdef debug
+				cout << "levelup Edge " << u << " " << v << endl;
+				cout << "\tLevel: "
+					 << level << " -> " << (level + 1) << endl;
+#endif
 				continue;
 			}
 			else {
