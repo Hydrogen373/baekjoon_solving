@@ -7,7 +7,7 @@
 
 using namespace std;
 
-using Node = int;
+using Node = unsigned int;
 
 class Ark {
 public:
