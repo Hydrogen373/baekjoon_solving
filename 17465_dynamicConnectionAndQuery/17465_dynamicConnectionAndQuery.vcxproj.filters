@@ -15,10 +15,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="fail.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="fail.cpp">
+    <ClCompile Include="fail2.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
