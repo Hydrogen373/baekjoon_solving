@@ -382,14 +382,13 @@ public:
 				assert(snode->value.a == snode->value.b);
 				try {
 					Edge edge = extraEdges[i].findAlterEdge(u);
+					extraEdges[i].remove(edge);
 					if (mst[i + 1].isSameComponent(edge.a, edge.b) == false) { // edge is alternative edge
 						found = true;
 						alterEdge = edge;
-						extraEdges[i].remove(edge);
 						break;
 					}
 					else { // level up extra edge
-						extraEdges[i].remove(edge);
 						extraEdges[i + 1].insert(edge);
 						edgeInfo[edge].level += 1;
 						continue;
