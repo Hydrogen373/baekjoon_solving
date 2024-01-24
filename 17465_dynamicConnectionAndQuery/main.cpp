@@ -29,12 +29,10 @@ public:
 class Ark {
 public:
 	int a, b;
-	int level;
-	Ark(int a, int b, int level) :a(a), b(b), level(level) {}
+	//int level;
+	Ark(int a, int b) :a(a), b(b) {}
 	bool operator<(const Ark& other) const {
-		if (a != other.a) return a < other.a;
-		else if (b != other.a) return b < other.b;
-		else return level < other.level;
+		return a < other.a || (a == other.a && b < other.b);
 	}
 };
 
@@ -125,10 +123,13 @@ public:
 		l->p = nullptr;
 		l = nullptr;
 		update();
+		assert(result->p == nullptr);
 		return result;
 	}
 
 	static void joinSeries(SeriesNode* a, SeriesNode* b) {
+		assert(a != nullptr);
+		assert(b != nullptr);
 		a = a->getRoot();
 		while (a->r != nullptr)
 		{
@@ -138,6 +139,7 @@ public:
 		b->splay();
 
 		a->r = b;
+		b->p = a;
 		a->update();
 	}
 
@@ -160,11 +162,22 @@ public:
 	bool operator<(const SeriesNode& other) {
 		return value < other.value;
 	}
+
+	SeriesNode* next() {
+		splay();
+		if (r == nullptr) return r;
+		SeriesNode* result = r;
+		while (result->l != nullptr)
+		{
+			result = result->l;
+		}
+		return result;
+	}
 };
 
+class NoEdge :std::exception {};
 class MST {
 	map<Ark, SeriesNode*> mp;
-	map<Edge, int> levels;
 
 	SeriesNode* makeNode(const Ark& ark) {
 		SeriesNode* node = new SeriesNode(ark);
@@ -173,6 +186,11 @@ class MST {
 	}
 
 public:
+	~MST() {
+		for (auto u : mp) {
+			delete[] u.second;
+		}
+	}
 	SeriesNode* find(const Ark& ark) {
 		auto iter = mp.find(ark);
 		if (iter == mp.end()) {
@@ -183,9 +201,13 @@ public:
 		}
 	}
 
-	bool isSameComponent(int a, int b, int level) {
-		auto aa = find(Ark(a, a, level));
-		auto bb = find(Ark(b, b, level));
+	bool isContaining(const Edge& edge) {
+		return find(Ark(edge.a, edge.b)) != nullptr;
+	}
+
+	bool isSameComponent(int a, int b) {
+		auto aa = find(Ark(a, a));
+		auto bb = find(Ark(b, b));
 		if (aa == nullptr || bb == nullptr) return false;
 		return aa->getRoot() == bb->getRoot();
 	}
@@ -193,20 +215,19 @@ public:
 	void insert(const Edge& edge) {
 		int a = edge.a;
 		int b = edge.b;
-		levels.insert(make_pair(edge, 0));
 
 		SeriesNode* aa, * bb;
-		aa = find(Ark(a, a, 0));
-		bb = find(Ark(b, b, 0));
+		aa = find(Ark(a, a));
+		bb = find(Ark(b, b));
 		if (aa == nullptr) {
-			aa = makeNode(Ark(a, a, 0));
+			aa = makeNode(Ark(a, a));
 		}
 		if (bb == nullptr) {
-			bb = makeNode(Ark(b, b, 0));
+			bb = makeNode(Ark(b, b));
 		}
 
-		SeriesNode* ab = makeNode(Ark(a, b, 0));
-		SeriesNode* ba = makeNode(Ark(b, a, 0));
+		SeriesNode* ab = makeNode(Ark(a, b));
+		SeriesNode* ba = makeNode(Ark(b, a));
 
 		aa->setHead();
 		bb->setHead();
@@ -216,113 +237,222 @@ public:
 		SeriesNode::joinSeries(bb, ba);
 	}
 
-	int remove(const Edge& edge) {
+	void remove(const Edge& edge, int level = 0) {
 		int a = edge.a;
 		int b = edge.b;
 
-		int level = levels[edge];
+		SeriesNode* ab = find(Ark(a, b));
+		SeriesNode* ba = find(Ark(b, a));
+		assert(ab != nullptr);
+		assert(ba != nullptr);
 
-		for (int i = 0; i <= level; i++) {
-			SeriesNode* ab = find(Ark(a, b, i));
-			SeriesNode* ba = find(Ark(b, a, i));
+		ab->setHead();
 
-			ab->setHead();
+		SeriesNode* nextTmp;
+		nextTmp = ab->next();
+		if (nextTmp != nullptr)
+			nextTmp->detachLeftSeries();
 
-			ab->splay();
-			ab->r->detachLeftSeries();
+		ba->detachLeftSeries();
+		nextTmp = ba->next();
+		if (nextTmp != nullptr)
+			nextTmp->detachLeftSeries();
 
-			ba->splay();
-			ba->r->detachLeftSeries();
-			ba->detachLeftSeries();
+		mp.erase(Ark(a, b));
+		mp.erase(Ark(b, a));
 
-			mp.erase(Ark(a, b, i));
-			mp.erase(Ark(b, a, i));
-
-			delete[] ab, ba;
-		}
-
-		levels.erase(edge);
-		return level;
+		delete[] ab, ba;
 	}
 };
 
 class ExtraEdgeHolder {
-	map<Edge, int> levels;
-	set<int> conn[20][100'000];
+	set<int> conn[100'000];
 
 public:
 	bool isContaining(const Edge& edge) {
-		return levels.find(edge) != levels.end();
+		return conn[edge.a].find(edge.b) != conn[edge.a].end();
 	}
-	void insert(const Edge& edge) {
-		levels.insert(make_pair(edge, 0));
-		conn[0][edge.a].insert(edge.b);
-		conn[0][edge.b].insert(edge.a);
+	void insert(const Edge& edge, int level = 0) {
+		conn[edge.a].insert(edge.b);
+		conn[edge.b].insert(edge.a);
 	}
 
 	void remove(const Edge& edge) {
-		int level = levels[edge];
-		levels.erase(edge);
-		conn[level][edge.a].erase(edge.b);
-		conn[level][edge.b].erase(edge.a);
+		assert(conn[edge.a].find(edge.b) != conn[edge.a].end());
+		assert(conn[edge.b].find(edge.a) != conn[edge.b].end());
+		conn[edge.a].erase(edge.b);
+		conn[edge.b].erase(edge.a);
 	}
 
-	void levelUp(const Edge& edge) {
-		int level = levels[edge];
-		levels[edge] += 1;
-		conn[level][edge.a].erase(edge.b);
-		conn[level][edge.b].erase(edge.a);
-		conn[level + 1][edge.a].insert(edge.b);
-		conn[level + 1][edge.b].insert(edge.a);
-	}
-
-	int findAlterEdge(int node, int level) {
-		if (conn[level][node].empty()) return -1;
-		return *(conn[level][node].begin());
+	Edge findAlterEdge(int u) {
+		if (conn[u].empty()) {
+			throw NoEdge();
+		}
+		int v = *(conn[u].begin());
+		return Edge(u, v);
 	}
 };
 
 class Graph {
-	MST mst;
-	ExtraEdgeHolder extraEdges;
+	MST mst[20];
+	ExtraEdgeHolder extraEdges[20];
+	struct EdgeInformation {
+		bool isMST;
+		int level;
+		EdgeInformation() :EdgeInformation(0, 0) {}
+		EdgeInformation(bool isMST, int level) :isMST(isMST), level(level) {}
+		bool operator<(const EdgeInformation& other) {
+			if (isMST == other.isMST) return level < other.level;
+			else return isMST;
+		}
+	};
+	map<Edge, EdgeInformation> edgeInfo;
+	
+	void _inorder(SeriesNode* node, int level) {
+		if (node == nullptr) return;
+		_inorder(node->l, level);
+		if (node->value.a != node->value.b) { // node is not vertex
+			Edge edge(node->value.a, node->value.b);
+			if (mst[level + 1].isContaining(edge) == false) {
+				mst[level + 1].insert(edge);
+				edgeInfo[edge].level += 1;
+			}
+		}
+		_inorder(node->r, level);
+	}
 public:
-	void qry(int a, int b) {
-		if (a < b) {
-			if (mst.find(Ark(a, b, 0)) != nullptr) {
-				// remove from mst
-				int level = mst.remove(Edge(a, b));
+	int numComponent = 0;
+	bool isContaining(const Edge& edge) {
+		return edgeInfo.find(edge) != edgeInfo.end();
+	}
 
-				for (int l = level; l >= 0; l--) {
-					auto node = mst.find(Ark(a, a, l));
+	void insert(const Edge& edge) {
+		assert(edge.a != edge.b);
+		bool insertIntoMST = (mst[0].isSameComponent(edge.a, edge.b) == false);
+		if (mst[0].isSameComponent(edge.a, edge.b) == false) {
+			mst[0].insert(edge);
+			numComponent -= 1;
+		}
+		else {
+			extraEdges[0].insert(edge);
+		}
+		edgeInfo.insert(make_pair(edge, EdgeInformation(insertIntoMST, 0)));
+	}
 
-					
-					// levelup mst
-					// TODO
+	void remove(const Edge& edge) {
+		assert(edge.a != edge.b);
+		bool isMST = edgeInfo[edge].isMST;
+		int level = edgeInfo[edge].level;
+		edgeInfo.erase(edge);
+		if (isMST == false) {
+			extraEdges[level].remove(edge);
+			return;
+		}
 
-					// find alter edge(u,v)
-					// TODO
-					
+		int a = edge.a;
+		int b = edge.b;
+		for (int i = 0; i <= level; i++) {
+			mst[i].remove(edge);
+		}
 
+		bool found = false;
+		Edge alterEdge(0, 0);
+		// levelup and find alternative edge
+		for (int i = level; i >= 0; i--) {
+			auto aa=mst[i].find(Ark(a, a));
+			auto bb=mst[i].find(Ark(b, b));
+			assert(aa != nullptr);
+			assert(bb != nullptr);
+
+			aa->splay();
+			bb->splay();
+
+			auto snode = (aa->size < bb->size ? aa : bb);
+
+			// levelup mst
+			_inorder(snode, i);
+			assert(snode != nullptr);
+			snode->splay();
+			assert(snode != nullptr);
+			snode = snode->leftmostVertex;
+
+			while (snode != nullptr)
+			{
+				int u = snode->value.a;
+				assert(snode->value.a == snode->value.b);
+				try {
+					Edge edge = extraEdges[i].findAlterEdge(u);
+					if (mst[i + 1].isSameComponent(edge.a, edge.b) == false) { // edge is alternative edge
+						found = true;
+						alterEdge = edge;
+						extraEdges[i].remove(edge);
+						break;
+					}
+					else { // level up extra edge
+						extraEdges[i].remove(edge);
+						extraEdges[i + 1].insert(edge);
+						edgeInfo[edge].level += 1;
+						continue;
+					}
 				}
-
-
+				catch (const NoEdge&) {
+					snode->splay();
+					if (snode->r != nullptr)
+						snode = snode->r->leftmostVertex;
+					else
+						break;
+				}
 			}
-			else if (extraEdges.isContaining(Edge(a, b))) {
-				extraEdges.remove(Edge(a,b));
+			if (found) break;
+		}
+
+		if (found) {
+			for (int i = 0; i <= edgeInfo[alterEdge].level; i++) {
+				mst[i].insert(alterEdge);
 			}
-			
-			// insertion
-			if (mst.isSameComponent(a, b, 0)) {
-				extraEdges.insert(Edge(a, b));
+			edgeInfo[alterEdge].isMST = true;
+		}
+		else {
+			numComponent += 1;
+		}
+		return;
+	}
+
+	bool isSameComponent(int a, int b) {
+		return mst[0].isSameComponent(a, b);
+	}
+	
+
+};
+
+int N, Q;
+int F = 0;
+Graph graph;
+int main() {
+	using namespace std;
+	cin >> N >> Q;
+	graph.numComponent = N;
+
+	for (int i = 0; i < Q; i++) {
+		unsigned int a, b, x, y;
+		std::cin >> a >> b;
+		x = (a ^ F) % N;
+		y = (b ^ F) % N;
+
+		if (x < y) {
+			Edge edge(x, y);
+			if (graph.isContaining(edge)) {
+				graph.remove(edge);
 			}
 			else {
-				mst.insert(Edge(a, b));
+				graph.insert(edge);
 			}
 		}
 		else {
-			std::cout << mst.isSameComponent(a, b, 0) << std::endl;
+			cout << graph.isSameComponent(x, y) << endl;
 		}
 
+		F += graph.numComponent;
 	}
-	
-};
+	return 0;
+}

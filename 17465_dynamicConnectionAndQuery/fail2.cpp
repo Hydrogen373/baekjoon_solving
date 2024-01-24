@@ -1,4 +1,3 @@
-#ifdef fail2
 #include<iostream>
 #include<map>
 #include<set>
@@ -569,4 +568,3 @@ EdgeInfo::EdgeInfo(bool mst, int level) :
 	mst(mst), level(level)
 {
 }
-#endif // fail2
