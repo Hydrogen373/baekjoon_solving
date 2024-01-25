@@ -1,23 +1,30 @@
+#define DEBUG
 #include<iostream>
 #include<map>
 #include<set>
+
+#ifdef DEBUG
 #include<cassert>
+#include<fstream>
+#endif // DEBUG
+#ifndef DEBUG
+#define assert(x)
+#endif // !DEBUG
+
+
+
 
 using std::map;
 using std::set;
 using std::make_pair;
+using Vertex = unsigned int;
 
 class Edge {
 public:
-	int a, b;
-	Edge(int a, int b) {
-		if (this->a < this->b) {
-			this->a = a;
-			this->b = b;
-		}
-		else {
-			this->a = b;
-			this->b = a;
+	Vertex a, b;
+	Edge(Vertex a, Vertex b):a(a),b(b) {
+		if (this->a > this->b) {
+			std::swap(this->a, this->b);
 		}
 	}
 	bool operator<(const Edge& other) const {
@@ -28,9 +35,9 @@ public:
 
 class Ark {
 public:
-	int a, b;
+	Vertex a, b;
 	//int level;
-	Ark(int a, int b) :a(a), b(b) {}
+	Ark(Vertex a, Vertex b) :a(a), b(b) {}
 	bool operator<(const Ark& other) const {
 		return a < other.a || (a == other.a && b < other.b);
 	}
@@ -42,15 +49,20 @@ public:
 	int size;
 	SeriesNode* l, * p, * r;
 	SeriesNode* leftmostVertex;
+	SeriesNode* leftmostNode;
+	bool highest;
 
-	SeriesNode(const Ark& ark) : 
-		value(ark), 
-		size(1), 
-		l(nullptr), 
-		p(nullptr), 
-		r(nullptr), 
-		leftmostVertex(nullptr) 
-	{}
+	SeriesNode(const Ark& ark) :
+		value(ark),
+		size(1),
+		l(nullptr),
+		p(nullptr),
+		r(nullptr),
+		leftmostVertex(nullptr),
+		leftmostNode(this),
+		highest(true)
+	{
+	}
 
 	void update() {
 		this->size = 1;
@@ -65,6 +77,11 @@ public:
 			leftmostVertex = r->leftmostVertex;
 		else
 			leftmostVertex = nullptr;
+
+		if (l != nullptr)
+			leftmostNode = l->leftmostNode;
+		else leftmostNode = this;
+		assert(leftmostNode != nullptr);
 	}
 
 	void rotate() {
@@ -124,23 +141,33 @@ public:
 		l = nullptr;
 		update();
 		assert(result->p == nullptr);
+		assert(leftmostNode == this);
+		return result;
+	}
+
+	SeriesNode* detachRightSeries() {
+		splay();
+		if (r == nullptr) return nullptr;
+		SeriesNode* result = r;
+		r->p = nullptr;
+		r = nullptr;
+		update();
+		assert(result->p == nullptr);
 		return result;
 	}
 
 	static void joinSeries(SeriesNode* a, SeriesNode* b) {
 		assert(a != nullptr);
-		assert(b != nullptr);
 		a = a->getRoot();
-		while (a->r != nullptr)
-		{
-			a = a->r;
-		}
-		a->splay();
+		assert(b != nullptr);
+		b = b->getRoot()->leftmostNode;
+		assert(b != nullptr);
 		b->splay();
 
-		a->r = b;
-		b->p = a;
-		a->update();
+		a->p = b;
+		assert(b->l == nullptr);
+		b->l = a;
+		b->update();
 	}
 
 	void setHead() {
@@ -148,6 +175,7 @@ public:
 		if (l == nullptr) return;
 
 		SeriesNode* leftSeries = detachLeftSeries();
+		assert(leftSeries != nullptr);
 		joinSeries(this, leftSeries);
 		return;
 	}
@@ -163,16 +191,6 @@ public:
 		return value < other.value;
 	}
 
-	SeriesNode* next() {
-		splay();
-		if (r == nullptr) return r;
-		SeriesNode* result = r;
-		while (result->l != nullptr)
-		{
-			result = result->l;
-		}
-		return result;
-	}
 };
 
 class NoEdge :std::exception {};
@@ -205,16 +223,16 @@ public:
 		return find(Ark(edge.a, edge.b)) != nullptr;
 	}
 
-	bool isSameComponent(int a, int b) {
+	bool isSameComponent(Vertex a, Vertex b) {
 		auto aa = find(Ark(a, a));
 		auto bb = find(Ark(b, b));
 		if (aa == nullptr || bb == nullptr) return false;
 		return aa->getRoot() == bb->getRoot();
 	}
 
-	void insert(const Edge& edge) {
-		int a = edge.a;
-		int b = edge.b;
+	void insert(const Edge& edge, bool highest = true) {
+		Vertex a = edge.a;
+		Vertex b = edge.b;
 
 		SeriesNode* aa, * bb;
 		aa = find(Ark(a, a));
@@ -238,8 +256,8 @@ public:
 	}
 
 	void remove(const Edge& edge, int level = 0) {
-		int a = edge.a;
-		int b = edge.b;
+		Vertex a = edge.a;
+		Vertex b = edge.b;
 
 		SeriesNode* ab = find(Ark(a, b));
 		SeriesNode* ba = find(Ark(b, a));
@@ -248,15 +266,10 @@ public:
 
 		ab->setHead();
 
-		SeriesNode* nextTmp;
-		nextTmp = ab->next();
-		if (nextTmp != nullptr)
-			nextTmp->detachLeftSeries();
+		ab->detachRightSeries();
 
 		ba->detachLeftSeries();
-		nextTmp = ba->next();
-		if (nextTmp != nullptr)
-			nextTmp->detachLeftSeries();
+		ba->detachRightSeries();
 
 		mp.erase(Ark(a, b));
 		mp.erase(Ark(b, a));
@@ -266,7 +279,7 @@ public:
 };
 
 class ExtraEdgeHolder {
-	set<int> conn[100'000];
+	set<Vertex> conn[100'000];
 
 public:
 	bool isContaining(const Edge& edge) {
@@ -284,12 +297,11 @@ public:
 		conn[edge.b].erase(edge.a);
 	}
 
-	Edge findAlterEdge(int u) {
+	Vertex findAlterEdge(Vertex u) {
 		if (conn[u].empty()) {
 			throw NoEdge();
 		}
-		int v = *(conn[u].begin());
-		return Edge(u, v);
+		return *(conn[u].begin());
 	}
 };
 
@@ -308,28 +320,30 @@ class Graph {
 	};
 	map<Edge, EdgeInformation> edgeInfo;
 	
-	void _inorder(SeriesNode* node, int level) {
+	void _inorder(SeriesNode* node, int level, set<Vertex>& vertexes) {
 		if (node == nullptr) return;
-		_inorder(node->l, level);
-		if (node->value.a != node->value.b) { // node is not vertex
+		_inorder(node->l, level, vertexes);
+		if (node->value.a < node->value.b && node->highest) { // node is not vertex
 			Edge edge(node->value.a, node->value.b);
-			if (mst[level + 1].isContaining(edge) == false) {
-				mst[level + 1].insert(edge);
-				edgeInfo[edge].level += 1;
-			}
+			mst[level + 1].insert(edge);
+			edgeInfo[edge].level += 1;
+			node->highest = false;
 		}
-		_inorder(node->r, level);
+		else {
+			vertexes.insert(node->value.a);
+		}
+		_inorder(node->r, level, vertexes);
 	}
 public:
-	int numComponent = 0;
+	unsigned int numComponent = 0;
 	bool isContaining(const Edge& edge) {
 		return edgeInfo.find(edge) != edgeInfo.end();
 	}
 
 	void insert(const Edge& edge) {
-		assert(edge.a != edge.b);
-		bool insertIntoMST = (mst[0].isSameComponent(edge.a, edge.b) == false);
-		if (mst[0].isSameComponent(edge.a, edge.b) == false) {
+		assert(edge.a < edge.b);
+		bool insertIntoMST = !(mst[0].isSameComponent(edge.a, edge.b));
+		if (insertIntoMST) {
 			mst[0].insert(edge);
 			numComponent -= 1;
 		}
@@ -340,7 +354,7 @@ public:
 	}
 
 	void remove(const Edge& edge) {
-		assert(edge.a != edge.b);
+		assert(edge.a < edge.b);
 		bool isMST = edgeInfo[edge].isMST;
 		int level = edgeInfo[edge].level;
 		edgeInfo.erase(edge);
@@ -349,8 +363,8 @@ public:
 			return;
 		}
 
-		int a = edge.a;
-		int b = edge.b;
+		Vertex a = edge.a;
+		Vertex b = edge.b;
 		for (int i = 0; i <= level; i++) {
 			mst[i].remove(edge);
 		}
@@ -370,44 +384,39 @@ public:
 			auto snode = (aa->size < bb->size ? aa : bb);
 
 			// levelup mst
-			_inorder(snode, i);
-			assert(snode != nullptr);
-			snode->splay();
-			assert(snode != nullptr);
-			snode = snode->leftmostVertex;
+			set<Vertex> vertexes;
+			_inorder(snode, i, vertexes);
 
-			while (snode != nullptr)
+			for (auto u = vertexes.begin(); u != vertexes.end();)
 			{
-				int u = snode->value.a;
-				assert(snode->value.a == snode->value.b);
 				try {
-					Edge edge = extraEdges[i].findAlterEdge(u);
+					Vertex v = extraEdges[i].findAlterEdge(*u);
+					Edge edge(*u, v);
 					extraEdges[i].remove(edge);
-					if (mst[i + 1].isSameComponent(edge.a, edge.b) == false) { // edge is alternative edge
+					// edge is alternative edge
+					if (vertexes.find(v) == vertexes.end()) {
 						found = true;
 						alterEdge = edge;
 						break;
 					}
-					else { // level up extra edge
+					// level up extra edge
+					else { 
 						extraEdges[i + 1].insert(edge);
 						edgeInfo[edge].level += 1;
 						continue;
 					}
 				}
 				catch (const NoEdge&) {
-					snode->splay();
-					if (snode->r != nullptr)
-						snode = snode->r->leftmostVertex;
-					else
-						break;
+					u++;
 				}
 			}
 			if (found) break;
 		}
 
 		if (found) {
-			for (int i = 0; i <= edgeInfo[alterEdge].level; i++) {
-				mst[i].insert(alterEdge);
+			int alterLevel = edgeInfo[alterEdge].level;
+			for (int i = 0; i <= alterLevel; i++) {
+				mst[i].insert(alterEdge, i==alterLevel);
 			}
 			edgeInfo[alterEdge].isMST = true;
 		}
@@ -417,7 +426,7 @@ public:
 		return;
 	}
 
-	bool isSameComponent(int a, int b) {
+	bool isSameComponent(Vertex a, Vertex b) {
 		return mst[0].isSameComponent(a, b);
 	}
 	
@@ -425,21 +434,27 @@ public:
 };
 
 int N, Q;
-int F = 0;
+unsigned long long int F = 0;
 Graph graph;
 int main() {
 	using namespace std;
 	cin >> N >> Q;
 	graph.numComponent = N;
+#ifdef DEBUG
+	ofstream fo;
+	fo.open("output.txt");
+#endif // DEBUG
+
 
 	for (int i = 0; i < Q; i++) {
-		unsigned int a, b, x, y;
+		unsigned long long int a, b, x, y;
 		std::cin >> a >> b;
 		x = (a ^ F) % N;
 		y = (b ^ F) % N;
 
 		if (x < y) {
 			Edge edge(x, y);
+			assert(edge.a < edge.b);
 			if (graph.isContaining(edge)) {
 				graph.remove(edge);
 			}
@@ -449,9 +464,16 @@ int main() {
 		}
 		else {
 			cout << graph.isSameComponent(x, y) << endl;
+#ifdef DEBUG
+			fo << graph.isSameComponent(x, y) << endl;
+#endif // DEBUG
 		}
 
 		F += graph.numComponent;
 	}
+#ifdef DEBUG
+	fo.close();
+#endif // DEBUG
+
 	return 0;
 }
