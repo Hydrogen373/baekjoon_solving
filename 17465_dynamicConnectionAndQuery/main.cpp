@@ -48,20 +48,23 @@ public:
 	Ark value;
 	int size;
 	SeriesNode* l, * p, * r;
-	SeriesNode* leftmostVertex;
+	// SeriesNode* leftmostVertex;
+	SeriesNode* leftmostHighestNode;
 	SeriesNode* leftmostNode;
 	bool highest;
 
-	SeriesNode(const Ark& ark) :
+	SeriesNode(const Ark& ark, bool highest = false) :
 		value(ark),
 		size(1),
 		l(nullptr),
 		p(nullptr),
 		r(nullptr),
-		leftmostVertex(nullptr),
+		leftmostHighestNode(nullptr),
 		leftmostNode(this),
-		highest(true)
+		highest(highest)
 	{
+		if (highest)
+			leftmostHighestNode = this;
 	}
 
 	void update() {
@@ -69,14 +72,14 @@ public:
 		if (l != nullptr) size += l->size;
 		if (r != nullptr) size += r->size;
 
-		if (l != nullptr && l->leftmostVertex != nullptr)
-			leftmostVertex = l->leftmostVertex;
-		else if (this->value.a == this->value.b)
-			leftmostVertex = this;
-		else if (r != nullptr && r->leftmostVertex != nullptr)
-			leftmostVertex = r->leftmostVertex;
+		if (l != nullptr && l->leftmostHighestNode != nullptr)
+			leftmostHighestNode = l->leftmostHighestNode;
+		else if (this->highest)
+			leftmostHighestNode = this;
+		else if (r != nullptr && r->leftmostHighestNode != nullptr)
+			leftmostHighestNode = r->leftmostHighestNode;
 		else
-			leftmostVertex = nullptr;
+			leftmostHighestNode = nullptr;
 
 		if (l != nullptr)
 			leftmostNode = l->leftmostNode;
@@ -197,8 +200,8 @@ class NoEdge :std::exception {};
 class MST {
 	map<Ark, SeriesNode*> mp;
 
-	SeriesNode* makeNode(const Ark& ark) {
-		SeriesNode* node = new SeriesNode(ark);
+	SeriesNode* makeNode(const Ark& ark, bool highest = false) {
+		SeriesNode* node = new SeriesNode(ark, highest);
 		mp.insert(make_pair(ark, node));
 		return node;
 	}
@@ -233,6 +236,8 @@ public:
 	void insert(const Edge& edge, bool highest = true) {
 		Vertex a = edge.a;
 		Vertex b = edge.b;
+		assert(a < b);
+		assert(find(Ark(a,b)) == nullptr);
 
 		SeriesNode* aa, * bb;
 		aa = find(Ark(a, a));
@@ -244,7 +249,7 @@ public:
 			bb = makeNode(Ark(b, b));
 		}
 
-		SeriesNode* ab = makeNode(Ark(a, b));
+		SeriesNode* ab = makeNode(Ark(a, b), true);
 		SeriesNode* ba = makeNode(Ark(b, a));
 
 		aa->setHead();
@@ -323,17 +328,41 @@ class Graph {
 	void _inorder(SeriesNode* node, int level, set<Vertex>& vertexes) {
 		if (node == nullptr) return;
 		_inorder(node->l, level, vertexes);
-		if (node->value.a < node->value.b && node->highest) { // node is not vertex
+		if (node->highest) { // node is not vertex
 			Edge edge(node->value.a, node->value.b);
 			mst[level + 1].insert(edge);
 			edgeInfo[edge].level += 1;
 			node->highest = false;
 		}
-		else {
+		else if (node->value.a == node->value.b)
+		{
 			vertexes.insert(node->value.a);
 		}
 		_inorder(node->r, level, vertexes);
 	}
+
+	void levelUpMST(SeriesNode *node, int level, set<Vertex> &vertexes)
+	{
+		if (node == nullptr)
+			return;
+		else
+		{
+			node->splay();
+			node = node->leftmostHighestNode;
+		}
+		while (node != nullptr)
+		{
+			mst[level + 1].insert(Edge(node->value.a, node->value.b));
+			vertexes.insert(node->value.a);
+			vertexes.insert(node->value.b);
+
+			node->splay();
+			node->highest = false;
+			node->update();
+			node = node->leftmostHighestNode;
+		}
+	}
+
 public:
 	unsigned int numComponent = 0;
 	bool isContaining(const Edge& edge) {
@@ -385,7 +414,7 @@ public:
 
 			// levelup mst
 			set<Vertex> vertexes;
-			_inorder(snode, i, vertexes);
+			levelUpMST(snode, i, vertexes);
 
 			for (auto u = vertexes.begin(); u != vertexes.end();)
 			{
@@ -416,7 +445,8 @@ public:
 		if (found) {
 			int alterLevel = edgeInfo[alterEdge].level;
 			for (int i = 0; i <= alterLevel; i++) {
-				mst[i].insert(alterEdge, i==alterLevel);
+				bool &&highest = (i == alterLevel);
+				mst[i].insert(alterEdge, highest);
 			}
 			edgeInfo[alterEdge].isMST = true;
 		}
@@ -427,7 +457,8 @@ public:
 	}
 
 	bool isSameComponent(Vertex a, Vertex b) {
-		return mst[0].isSameComponent(a, b);
+		return isContaining(Edge(a, b)) ||
+			   mst[0].isSameComponent(a, b);
 	}
 	
 
