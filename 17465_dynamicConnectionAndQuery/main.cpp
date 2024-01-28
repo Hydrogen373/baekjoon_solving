@@ -347,14 +347,15 @@ class Graph {
 			return;
 		else
 		{
-			node->splay();
-			node = node->leftmostHighestNode;
+			node = node->getRoot()->leftmostHighestNode;
 		}
 		while (node != nullptr)
 		{
-			mst[level + 1].insert(Edge(node->value.a, node->value.b));
+			Edge edge(node->value.a, node->value.b);
+			mst[level + 1].insert(edge);
 			vertexes.insert(node->value.a);
 			vertexes.insert(node->value.b);
+			edgeInfo[edge].level += 1;
 
 			node->splay();
 			node->highest = false;
