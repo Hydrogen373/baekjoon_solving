@@ -345,11 +345,10 @@ class Graph {
 		{
 			node = node->getRoot()->leftmostHighest;
 		}
+		if (node != nullptr) {
 			assert(node->highest);
 			Edge edge(node->value.a, node->value.b);
 			mst[level + 1].insert(edge, true);
-		{
-			mst[level + 1].insert(Edge(node->value.a, node->value.b));
 			vertexes.insert(node->value.a);
 			vertexes.insert(node->value.b);
 			edgeInfo[edge].level += 1;
