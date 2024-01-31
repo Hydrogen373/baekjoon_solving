@@ -12,33 +12,33 @@
 #define assert(x)
 #endif // !DEBUG
 
-
-
 using std::set;
 using std::map;
 using Vertex = unsigned int;
 using std::make_pair;
+using std::make_tuple;
+using std::swap;
 
 struct SeriesNode {
 private:
 	Vertex a, b;
+	int level;
 	int size;
 	SeriesNode* l, * p, * r;
 	SeriesNode* leftmostFlagged;
 	bool flag;
 public:
-	SeriesNode(Vertex a, Vertex b, bool flag) :
+	SeriesNode(Vertex a, Vertex b, int level) :
 		a(a),
 		b(b),
+		level(level),
 		size(1),
 		l(nullptr),
 		p(nullptr),
 		r(nullptr),
 		leftmostFlagged(nullptr),
-		flag(flag) 
-	{
-		if (this->flag) leftmostFlagged = this;
-	}
+		flag(false) 
+	{}
 
 	void update() {
 		this->size = 1;
@@ -101,29 +101,33 @@ public:
 		while (this->p!=nullptr)
 		{
 			if (p->p != nullptr) {
-				SeriesNode* uncle;
-				SeriesNode* child;
-				if (this == p->l)
-					child = r;
-				else
-					child = l;
-				if (p->p->l == p)
-					uncle = p->p->r;
-				else
-					uncle = p->p->l;
-				unsigned int c, u;
-				if (child != nullptr)
-					c = child->size;
-				else
-					c = 0;
-				if (uncle != nullptr)
-					u = uncle->size;
-				else
-					u = 0;
-				if (c < u)
-					this->rotate();
-				else
+				//SeriesNode* uncle;
+				//SeriesNode* child;
+				//if (this == p->l)
+				//	child = r;
+				//else
+				//	child = l;
+				//if (p->p->l == p)
+				//	uncle = p->p->r;
+				//else
+				//	uncle = p->p->l;
+				//unsigned int c, u;
+				//if (child != nullptr)
+				//	c = child->size;
+				//else
+				//	c = 0;
+				//if (uncle != nullptr)
+				//	u = uncle->size;
+				//else
+				//	u = 0;
+				//if (c < u)
+				//	this->rotate();
+				//else
+				//	p->rotate();
+				if ((p->p->l == p) == (p->l == this))
 					p->rotate();
+				else
+					rotate();
 			}
 			this->rotate();
 		}
@@ -211,356 +215,280 @@ public:
 			return nullptr;
 	}
 
-	SeriesNode* getLeftmostFlagged() {
+	SeriesNode* getFirstFlagged() {
+		splay();
 		return leftmostFlagged;
 	}
 };
 
-struct NoEdge {};
-
-struct MST {
+struct Graph {
 private:
-	map<std::pair<Vertex, Vertex>, SeriesNode*> mp;
+	map<std::tuple<Vertex, Vertex, int>, SeriesNode*> mp;
+	struct Information
+	{
+		bool mst;
+		int level;
+		Information() :Information(false, 0) {}
+		Information(bool mst, int level) :mst(mst), level(level) {}
+	};
+	map<std::pair<Vertex, Vertex>, Information> info;
 
-	SeriesNode* makeNode(Vertex a, Vertex b, bool flag) {
-		SeriesNode* node = new SeriesNode(a, b, flag);
-		mp.insert(make_pair(make_pair(a, b), node));
+	set<Vertex> conn[20][100'000];
+	int degrees[20][100'000]{ 0, };
+	int numComponent;
+
+	SeriesNode* makeNode(Vertex a, Vertex b, int level) {
+		SeriesNode* node = new SeriesNode(a, b, level);
+		mp.insert(make_pair(std::make_tuple(a, b, level), node));
 		return node;
 	}
 
-public:
-	~MST() {
-		for (auto iter : mp) {
-			delete iter.second;
+	void _insertMST(Vertex a, Vertex b, int level) {
+		if (a > b)
+			swap(a, b);
+		assert(isSameComponent(a, b, level) == false);
+
+		auto edge = make_pair(a, b);
+		if (info.find(edge) == info.end()) {
+			info.insert(make_pair(edge, Information(true, level)));
 		}
-	}
-
-	SeriesNode* find(Vertex a, Vertex b) {
-		auto iter = mp.find(make_pair(a, b));
-		if (iter == mp.end()) {
-			return nullptr;
-		}
-		else return iter->second;
-	}
-
-	bool isContaining(Vertex a, Vertex b) {
-		return mp.find(make_pair(a, b)) != mp.end();
-	}
-
-	bool isSameComponent(Vertex a, Vertex b) {
-		auto aa = find(a, a);
-		auto bb = find(b, b);
-		if (aa == nullptr || bb == nullptr)
-			return false;
-		else return (aa->getRoot() == bb->getRoot());
-	}
-
-	void insert(Vertex a, Vertex b, bool highest) {
-		if (a > b) 
-			std::swap(a, b);
-		assert(find(a, b) == nullptr);
-		assert(find(b, a) == nullptr);
-		assert(isSameComponent(a, b) == false);
+		else if (info[edge].level < level)
+			info[edge].level = level;
 
 		SeriesNode* aa, * bb;
-		aa = find(a, a);
-		bb = find(b, b);
+		aa = find(a, a, level);
+		bb = find(b, b, level);
 		if (aa == nullptr)
-			aa = makeNode(a, a, false);
+			aa = makeNode(a, a, level);
 		if (bb == nullptr)
-			bb = makeNode(b, b, false);
+			bb = makeNode(b, b, level);
 
 		aa->setHead(); bb->setHead();
 		aa = aa->getRoot(); bb = bb->getRoot();
 
-		SeriesNode* ab = makeNode(a, b, highest);
-		SeriesNode* ba = makeNode(b, a, false);
+		SeriesNode* ab = makeNode(a, b, level);
+		SeriesNode* ba = makeNode(b, a, level);
 
 		SeriesNode::joinSeries(aa, ab);
 		SeriesNode::joinSeries(bb, ba);
 		SeriesNode::joinSeries(aa, bb);
 	}
 
-	void remove(Vertex a, Vertex b) {
+	void _removeMST(Vertex a, Vertex b) {
 		if (a > b) 
-			std::swap(a, b);
-		assert(find(a, b) != nullptr && find(b, a) != nullptr);
+			swap(a, b);
 
-		auto ab = find(a, b);
-		auto ba = find(b, a);
-		SeriesNode* lp, * rp;
+		for (int i = 0; i <= info[make_pair(a, b)].level; i++) {
+			auto ab = find(a, b, i);
+			auto ba = find(b, a, i);
+			SeriesNode* lp, * rp;
 
-		ab->setHead();
-		ab->split(lp, rp);
+			ab->setHead();
+			ab->split(lp, rp);
+			ba->split(lp, rp);
 
-		ba->split(lp, rp);
+			mp.erase(make_tuple(a, b, i));
+			mp.erase(make_tuple(b, a, i));
 
-		mp.erase(make_pair(a, b));
-		mp.erase(make_pair(b, a));
-	
-		delete[] ab, ba;
-	}
-};
-
-struct ExtraEdgeHolder {
-private:
-	set<Vertex> conn[100'000];
-	int degrees[100'000]{ 0, };
-public:
-	MST* mst;
-
-	bool isContaining(Vertex a, Vertex b) {
-		return conn[a].find(b) != conn[a].end();
-	}
-
-	void insert(Vertex a, Vertex b) {
-		conn[a].insert(b);
-		conn[b].insert(a);
-		degrees[a] += 1;
-		degrees[b] += 1;
-		if (degrees[a] == 1)
-			mst->find(a, a)->flagUp(true);
-		if (degrees[b] == 1)
-			mst->find(b, b)->flagUp(true);
-	}
-
-	void remove(Vertex a, Vertex b) {
-		conn[a].erase(b);
-		conn[b].erase(a);
-		degrees[a] -= 1;
-		degrees[b] -= 1;
-		if (degrees[a] == 0)
-			mst->find(a, a)->flagUp(false);
-		if (degrees[b] == 0)
-			mst->find(b, b)->flagUp(false);
-	}
-
-	Vertex getConnectedVertex(Vertex a) {
-		if (degrees[a] != 0)
-			return *conn[a].begin();
-		else
-			throw NoEdge();
-	}
-};
-
-struct Graph {
-private:
-	MST mst[20];
-	ExtraEdgeHolder extraEdges[20];
-	struct EdgeInformation {
-		bool mst;
-		int level;
-		EdgeInformation(bool mst, int level) :mst(mst), level(level) {}
-		EdgeInformation() :EdgeInformation(false, 0) {}
-	};
-	map<std::pair<Vertex, Vertex>, EdgeInformation> edgeInformations;
-public:
-	void flagUp(int level, Vertex v, bool flag) {
-		mst[level].find(v, v)->flagUp(flag);
-	}
-	Graph() {
-		for (int i = 0; i < 20; i++) {
-			extraEdges[i].mst = &(mst[i]);
-		}
-	}
-
-
-	unsigned long long numComponent;
-
-	bool isContaining(Vertex a, Vertex b) {
-		if (a > b) {
-			std::swap(a, b);
+			delete[] ab;
+			delete[] ba;
 		}
 
-		return edgeInformations.find(make_pair(a, b)) 
-			!= edgeInformations.end();
+		info.erase(make_pair(a, b));
 	}
 
-	bool isSameComponent(Vertex a, Vertex b) {
-		if (a > b) std::swap(a, b);
-		return isContaining(a, b) 
-			|| mst[0].isSameComponent(a, b);
+	void _insertExtra(Vertex a, Vertex b, int level) {
+		if (a > b)
+			swap(a, b);
+		info.insert(make_pair(make_pair(a, b), Information(false, level)));
+
+		conn[level][a].insert(b);
+		conn[level][b].insert(a);
+		degrees[level][a] += 1;
+		degrees[level][b] += 1;
+		if (degrees[level][a] == 1)
+			find(a, a, level)->flagUp(true);
+		if (degrees[level][b] == 1)
+			find(b, b, level)->flagUp(true);
 	}
 
-	void insert(Vertex a, Vertex b) {
-		if (a > b) std::swap(a, b);
-		assert(isContaining(a, b) == false);
+	void _removeExtra(Vertex a, Vertex b) {
+		if (a > b)
+			swap(a, b);
 
-		bool insertIntoMst = !mst[0].isSameComponent(a, b);
-		if (insertIntoMst) { 
-			mst[0].insert(a, b, true);
-			numComponent--;
-		}
-		else {
-			extraEdges[0].insert(a, b);
-		}
-		edgeInformations.insert(
-			make_pair(
-				make_pair(a, b),
-				EdgeInformation(insertIntoMst, 0)
-			)
-		);
+		int level = info[make_pair(a, b)].level;
+		info.erase(make_pair(a, b));
+
+		conn[level][a].erase(b);
+		conn[level][b].erase(a);
+		degrees[level][a] -= 1;
+		degrees[level][b] -= 1;
+		if (degrees[level][a] == 0)
+			find(a, a, level)->flagUp(false);
+		if (degrees[level][b] == 0)
+			find(b, b, level)->flagUp(false);
 	}
 
-	void remove(Vertex a, Vertex b) {
-		if (a > b) std::swap(a, b);
-		assert(isContaining(a, b) == true);
-		
-		EdgeInformation info = edgeInformations[make_pair(a, b)];
-		edgeInformations.erase(make_pair(a, b));
+	std::pair<Vertex, Vertex> _findAlterEdge(Vertex a, Vertex b, int level) {
+		if (a > b)
+			swap(a, b);
 
-		// remove extra edge
-		if (info.mst == false) {
-			extraEdges[info.level].remove(a, b);
+		auto aa = find(a, a, level);
+		auto bb = find(b, b, level);
 
-			return;
+		aa = aa->getRoot();
+		bb = bb->getRoot();
+		auto smallerMST = aa->getSize() < bb->getSize() ? aa : bb;
+		auto iter = smallerMST->getFirstFlagged();
+
+		while (iter != nullptr) {
+			if (iter->getA() < iter->getB()) {
+				iter->flagUp(false);
+				_insertMST(iter->getA(), iter->getB(), level + 1);
+				find(iter->getA(), iter->getB(), level + 1)->flagUp(true);
+			}
+			iter = iter->nextFlagged();
 		}
 
-		// remove mst edge
-		for (int i = info.level; i >= 0; i--) {
-			mst[i].remove(a, b);
-		}
+		iter = smallerMST->getFirstFlagged();
+		while (iter != nullptr)
+		{
+			assert(iter->getA() == iter->getB());
 
-		bool found = false;
-		std::pair<Vertex, Vertex> alterEdge;
-		for (int i = info.level; i >= 0; i--) {
-			auto aa = mst[i].find(a, a);
-			auto bb = mst[i].find(b, b);
-
-			aa->splay(); bb->splay();
-			auto start = (aa->getSize() < bb->getSize() ? aa : bb);
-
-			auto iter = start->getRoot()->getLeftmostFlagged();
-			while (iter != nullptr)
+			Vertex u = iter->getA();
+			while (conn[level][u].empty() == false)
 			{
-				// mst levelup
-				if (iter->getA() < iter->getB()) {
-					iter->flagUp(false);
-					Vertex a = iter->getA();
-					Vertex b = iter->getB();
-					mst[i + 1].insert(a, b, true);
-					edgeInformations[make_pair(a, b)].level += 1;
+				Vertex v = *(conn[level][u].begin());
+				_removeExtra(u, v);
+
+				if (isSameComponent(u, v, level + 1)) {
+					_insertExtra(u, v, level + 1);
 				}
-				iter = iter->nextFlagged();
+				else {
+					if (u > v) swap(u, v);
+					return make_pair(u, v);
+				}
 			}
 
-			iter = start->getRoot()->getLeftmostFlagged();
-			while (iter != nullptr) {
-				if (!(iter->getA() == iter->getB()))
-					iter = iter->nextFlagged();
+			iter = iter->nextFlagged();
+		}
+		return make_pair(-1, -1);
+	}
+public:
+	Graph(int N) :numComponent(N) {}
 
-				Vertex u = iter->getA();
-				Vertex v;
-				try {
-					v = extraEdges[i].getConnectedVertex(u);
-				}
-				catch (NoEdge&) {
-					iter = iter->nextFlagged();
-					continue;
-				}
-				if (u > v) std::swap(u, v);
-				extraEdges[i].remove(u, v);
+	int getNumComponent() {
+		return numComponent;
+	}
 
-				// (u, v) is not alternative edge
-				if (mst[i + 1].isSameComponent(u, v)) {
-					extraEdges[i + 1].insert(u, v);
-					edgeInformations[make_pair(u, v)].level += 1;
-					continue;
-				}
+	SeriesNode* find(Vertex a, Vertex b, int level) {
+		auto iter = mp.find(make_tuple(a, b, level));
+		if (iter == mp.end())
+			return nullptr;
+		else
+			return iter->second;
+	}
 
-				// found
-				alterEdge = make_pair(u, v);
+	bool isContaining(Vertex a, Vertex b) {
+		if (a > b)
+			swap(a, b);
+		return info.find(make_pair(a, b)) != info.end();
+	}
+
+	bool isSameComponent(Vertex a, Vertex b, int level) {
+		if (a > b)
+			swap(a, b);
+
+		auto aa = find(a, a, level);
+		auto bb = find(b, b, level);
+
+		if (aa == nullptr || bb == nullptr)
+			return false;
+		return aa->getRoot() == bb->getRoot();
+	}
+
+	void remove(Vertex a, Vertex b) {
+		if (a > b) swap(a, b);
+		if (info[make_pair(a, b)].mst == false) {
+			_removeExtra(a, b);
+			return;
+		}
+		int lv = info[make_pair(a, b)].level;
+		_removeMST(a, b);
+		std::pair<Vertex, Vertex> alter;
+		bool found = false;
+		for (; lv >= 0; lv--) {
+			alter = _findAlterEdge(a, b, lv);
+
+			if (alter.first != alter.second) {
 				found = true;
 				break;
 			}
-			if (found)
-				break;
-
 		}
 		if (found) {
-			auto alterLevel = edgeInformations[alterEdge].level;
-			Vertex& u = alterEdge.first;
-			Vertex& v = alterEdge.second;
-
-			for (int i = alterLevel; i >= 0; i--) {
-				assert(mst[i].isSameComponent(u, v) == false);
-				mst[i].insert(u, v, i == alterLevel);
+			for (int i = 0; i <= lv; i++) {
+				_insertMST(alter.first, alter.second, i);
 			}
-			edgeInformations[alterEdge].mst = true;
+			find(alter.first, alter.second, lv)->flagUp(true);
 		}
-		else {
+		else
 			numComponent++;
-		}
 	}
 
+	void insert(Vertex a, Vertex b) {
+		if (a > b) swap(a, b);
+		if (isSameComponent(a, b, 0)) {
+			_insertExtra(a, b, 0);
+		}
+		else {
+			_insertMST(a, b, 0);
+			find(a, b, 0)->flagUp(true);
+			numComponent--;
+		}
+	}
 };
 
 int N, Q;
 unsigned long long int F = 0;
-Graph graph;
 
 int main() {
-//	using namespace std;
-//	cin >> N >> Q;
-//	graph.numComponent = N;
-//#ifdef DEBUG
-//	ofstream fo;
-//	fo.open("output.txt");
-//#endif // DEBUG
-//
-//
-//	for (int i = 0; i < Q; i++) {
-//		unsigned long long int a, b, x, y;
-//		std::cin >> a >> b;
-//		x = (a ^ F) % N;
-//		y = (b ^ F) % N;
-//
-//		if (x < y) {
-//			if (graph.isContaining(x, y)) {
-//				graph.remove(x, y);
-//			}
-//			else {
-//				graph.insert(x, y);
-//			}
-//		}
-//		else {
-//			cout << graph.isSameComponent(y, x) << endl;
-//#ifdef DEBUG
-//			fo << graph.isSameComponent(x, y) << endl;
-//#endif // DEBUG
-//		}
-//
-//		F += graph.numComponent;
-//	}
-//#ifdef DEBUG
-//	fo.close();
-//#endif // DEBUG
-
 	using namespace std;
-	cin >> N;
-	graph.numComponent = N;
+	ios::sync_with_stdio(false);
+	cin.tie(0);
+	cin >> N >> Q;
+	Graph* graph = new Graph(N);
+#ifdef DEBUG
+	ofstream fo;
+	fo.open("output.txt");
+#endif // DEBUG
 
 
-	while (true) {
+	for (int i = 0; i < Q; i++) {
 		unsigned long long int a, b, x, y;
 		std::cin >> a >> b;
-		x = a;
-		y = b;
+		x = (a ^ F) % N;
+		y = (b ^ F) % N;
 
 		if (x < y) {
-			if (graph.isContaining(x, y)) {
-				graph.remove(x, y);
+			if (graph->isContaining(x, y)) {
+				graph->remove(x, y);
 			}
 			else {
-				graph.insert(x, y);
+				graph->insert(x, y);
 			}
 		}
 		else {
-			cout << graph.isSameComponent(y, x) << endl;
+			cout << (graph->isContaining(y, x) 
+				|| graph->isSameComponent(y, x, 0)) << '\n';
+#ifdef DEBUG
+			fo << graph->isSameComponent(x, y, 0) << endl;
+#endif // DEBUG
 		}
 
-		F += graph.numComponent;
+		F += graph->getNumComponent();
 	}
-
+#ifdef DEBUG
+	fo.close();
+#endif
 	return 0;
 }

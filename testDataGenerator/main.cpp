@@ -42,10 +42,11 @@ void dfs(int newroot) {
 
 int main() {
 	using namespace std;
-	ofstream input, output, log;
+	ofstream input, output, log, fs;
 	input.open("input.txt");
 	log.open("log.txt");
 	output.open("output.txt");
+	fs.open("fs.txt");
 
 	cin >> N >> Q;
 	numComponent = N;
@@ -78,9 +79,8 @@ int main() {
 			bool taskIsRemoving = adjacent[x][y];
 			if (taskIsRemoving) {
 				adjacent[x][y] = adjacent[y][x] = false;
-				int oldRoot = findRoot(x);
-				int newRoot = oldRoot == x ? y : x;
-				dfs(newRoot);
+				dfs(x);
+				dfs(y);
 				if (findRoot(x) != findRoot(y)) {
 					numComponent++;
 				}
@@ -102,6 +102,7 @@ int main() {
 		}
 
 		F += numComponent;
+		fs << numComponent;
 	}
 	// terminate
 	for (unsigned int i = 0; i < N; i++) {
@@ -112,5 +113,6 @@ int main() {
 	input.close();
 	log.close();
 	output.close();
+	fs.close();
 	return 0;
 }
