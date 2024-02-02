@@ -9,6 +9,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "17465_dynamicConnectivityAn
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "testDataGenerator", "testDataGenerator\testDataGenerator.vcxproj", "{23B6C6BA-B519-4198-9FA0-366A610BC67E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "1826_fuel", "1826_fuel\1826_fuel.vcxproj", "{7BBC7643-5601-445E-9068-DA28F46C37B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -41,6 +43,14 @@ Global
 		{23B6C6BA-B519-4198-9FA0-366A610BC67E}.Release|x64.Build.0 = Release|x64
 		{23B6C6BA-B519-4198-9FA0-366A610BC67E}.Release|x86.ActiveCfg = Release|Win32
 		{23B6C6BA-B519-4198-9FA0-366A610BC67E}.Release|x86.Build.0 = Release|Win32
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Debug|x64.ActiveCfg = Debug|x64
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Debug|x64.Build.0 = Debug|x64
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Debug|x86.ActiveCfg = Debug|Win32
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Debug|x86.Build.0 = Debug|Win32
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Release|x64.ActiveCfg = Release|x64
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Release|x64.Build.0 = Release|x64
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Release|x86.ActiveCfg = Release|Win32
+		{7BBC7643-5601-445E-9068-DA28F46C37B6}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
