@@ -23,6 +23,7 @@ int main() {
 	for (int i = 0; i < N; i++) {
 		std::string tmp;
 		std::cin >> tmp;
+		tmp.push_back('z' + 1);
 		words.push_back(tmp);
 		std::push_heap(words.begin(), words.end(), comp());
 	}
@@ -37,7 +38,7 @@ int main() {
 
 		first = first.substr(1, first.length() - 1);
 
-		if (first.empty() == false) {
+		if (first.length() > 1) {
 			words.push_back(first);
 			std::push_heap(words.begin(), words.end(), comp());
 		}
