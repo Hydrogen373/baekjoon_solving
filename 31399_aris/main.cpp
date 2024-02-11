@@ -1,32 +1,73 @@
 #include<iostream>
-#include<tuple>
+#include<map>
+#include<cassert>
 
 int H, W;
 int R, C, D;
-bool cleaning;
-int tr, tc, td;
 
 int dr[]{ -1,0,1,0 };
 int dc[]{ 0,1,0,-1 };
 
 char** A;
 char** B;
-bool** cleaned;
 
-void rotate(char c) {
-	D = (D + c) % 4;
+struct Status {
+	unsigned short r, c;
+	unsigned char d;
+	unsigned int distance;
+	Status(unsigned short r, unsigned short c, char d, unsigned int distance) :
+		r(r), c(c), d(d), distance(distance) {}
+	Status() :Status(0, 0, 0, 0) {}
+	void rotate(char c) {
+		d = (d + c) % 4;
+	}
+	void move() {
+		r += dr[d];
+		c += dc[d];
+		distance += 1;
+	}
+	bool operator==(const Status& other) {
+		return r == other.r && c == other.c && d == other.d;
+	}
+	void jump(const Status& after) {
+		r = after.r;
+		c = after.c;
+		d = after.d;
+		distance += after.distance;
+	}
+};
+bool operator<(const Status& a, const Status& b) {
+	if (a.r != b.r)return a.r < b.r;
+	else if (a.c != b.c)return a.c < b.c;
+	else return a.d < b.d;
 }
-unsigned long long int counter = 0;
-void move(bool count) {
-	static unsigned long long buf = 0;
-	R += dr[D];
-	C += dc[D];
-	if (count) {
-		counter += buf + 1;
-		buf = 0;
+std::map<Status, Status> jumpTable;
+Status aris;
+Status endPoint(0xffff, 0xffff, 0xff, 0);
+Status find(const Status& s) {
+	if (jumpTable.find(s) == jumpTable.end()) {
+		Status result = s;
+		result.distance = 0;
+		return result;
 	}
 	else {
-		buf++;
+		jumpTable[s].jump(find(jumpTable[s]));
+		return jumpTable[s];
+	}
+}
+void initJumpTable(const Status& a) {
+	assert(jumpTable.find(a) == jumpTable.end());
+	auto r = a.r;
+	auto c = a.c;
+
+	for (int i = 0; i < 4; i++) {
+		Status tmp = Status(r, c, i, 0);
+		tmp.rotate(B[r][c]);
+		tmp.move();
+		if (tmp.r < 0 || tmp.r >= H || tmp.c < 0 || tmp.c >= W || find(tmp) == a) {
+			tmp.jump(endPoint);
+		}
+		jumpTable.insert(std::make_pair(Status(r, c, i, 0), tmp));
 	}
 }
 
@@ -37,6 +78,7 @@ int main() {
 	std::cin >> H >> W;
 
 	std::cin >> R >> C >> D;
+	aris = Status(R, C, D, 0);
 
 	A = new char* [H];
 	for (int i = 0; i < H; i++) {
@@ -54,43 +96,32 @@ int main() {
 			B[i][j] -= '0';
 		}
 	}
-	cleaned = new bool* [H];
-	for (int i = 0; i < H; i++) {
-		cleaned[i] = new bool[W] {0, };
-	}
 
 	while (true) {
-		if (cleaned[R][C]) {
-			if (cleaning == true) {
-				cleaning = false;
-				tr = R;
-				tc = C;
-				td = D;
-			}
-			else if (tr == R && tc == C && td == D) {
-				break;
-			}
-			rotate(B[R][C]);
-			move(false);
+		auto next = find(aris);
+		if (next == endPoint)
+			break;
+
+		if (next == aris) {
+			initJumpTable(next);
+			aris.rotate(A[aris.r][aris.c]);
+			aris.move();
 		}
 		else {
-			cleaning = true;
-			cleaned[R][C] = true;
-			rotate(A[R][C]);
-			move(true);
+			aris.jump(next);
 		}
 
-		if (R < 0 || R >= H || C < 0 || C >= W)
+		if (aris.r < 0 || aris.r >= H || aris.c < 0 || aris.c >= W)
 			break;
+		std::cout << '\t' << find(Status(2, 1, 1, 0)).distance << '\n';
 	}
-	std::cout << counter;
+	std::cout << aris.distance;
+
 
 	for (int i = 0; i < H; i++) {
 		delete[] A[i], B[i];
-		delete[] cleaned[i];
 	}
 	delete[] A, B;
-	delete[] cleaned;
 
 	return 0;
 }
