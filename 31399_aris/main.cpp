@@ -1,6 +1,7 @@
 #include<iostream>
 #include<map>
 #include<cassert>
+#include<string>
 
 int H, W;
 int R, C, D;
@@ -64,16 +65,25 @@ void initJumpTable(const Status& a) {
 		Status tmp = Status(r, c, i, 0);
 		tmp.rotate(B[r][c]);
 		tmp.move();
-		if (tmp.r < 0 || tmp.r >= H || tmp.c < 0 || tmp.c >= W || find(tmp) == a) {
+		if (tmp.r < 0 || tmp.r >= H || tmp.c < 0 
+			|| tmp.c >= W 
+			|| find(tmp) == Status(r, c, i, 0)) 
+		{
 			tmp.jump(endPoint);
 		}
-		jumpTable.insert(std::make_pair(Status(r, c, i, 0), tmp));
+		jumpTable.insert(
+			std::make_pair(
+				Status(r, c, i, 0),
+				tmp
+			)
+		);
 	}
 }
 
 int main() {
 	std::ios::sync_with_stdio(false);
 	std::cin.tie(0);
+	std::cout.tie(0);
 
 	std::cin >> H >> W;
 
@@ -113,10 +123,9 @@ int main() {
 
 		if (aris.r < 0 || aris.r >= H || aris.c < 0 || aris.c >= W)
 			break;
-		std::cout << '\t' << find(Status(2, 1, 1, 0)).distance << '\n';
+
 	}
 	std::cout << aris.distance;
-
 
 	for (int i = 0; i < H; i++) {
 		delete[] A[i], B[i];
