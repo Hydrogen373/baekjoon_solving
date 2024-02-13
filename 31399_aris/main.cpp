@@ -1,7 +1,5 @@
 #include<iostream>
 #include<map>
-#include<cassert>
-#include<string>
 
 int H, W;
 int R, C, D;
@@ -15,71 +13,150 @@ char** B;
 struct Status {
 	unsigned short r, c;
 	unsigned char d;
-	unsigned int distance;
-	Status(unsigned short r, unsigned short c, char d, unsigned int distance) :
-		r(r), c(c), d(d), distance(distance) {}
-	Status() :Status(0, 0, 0, 0) {}
+	Status(unsigned short r, unsigned short c, unsigned char d)
+		:r(r), c(c), d(d) {}
 	void rotate(char c) {
 		d = (d + c) % 4;
 	}
 	void move() {
 		r += dr[d];
 		c += dc[d];
-		distance += 1;
 	}
-	bool operator==(const Status& other) {
+	bool operator==(const Status& other) const {
 		return r == other.r && c == other.c && d == other.d;
 	}
-	void jump(const Status& after) {
-		r = after.r;
-		c = after.c;
-		d = after.d;
-		distance += after.distance;
+	bool operator<(const Status& other) const {
+		if (r != other.r) return r < other.r;
+		else if (c != other.c) return c < other.c;
+		else return d < other.d;
 	}
 };
-bool operator<(const Status& a, const Status& b) {
-	if (a.r != b.r)return a.r < b.r;
-	else if (a.c != b.c)return a.c < b.c;
-	else return a.d < b.d;
-}
-std::map<Status, Status> jumpTable;
-Status aris;
-Status endPoint(0xffff, 0xffff, 0xff, 0);
-Status find(const Status& s) {
-	if (jumpTable.find(s) == jumpTable.end()) {
-		Status result = s;
-		result.distance = 0;
+struct TreeNode {
+	Status stat;
+	TreeNode* head;
+	long long distance;
+	long long size;
+	TreeNode(const Status& s)
+		:stat(s), head(nullptr), distance(0), size(1) {}
+	void setHead(TreeNode* h, long long distance) {
+		if (head != nullptr) {
+			return;
+		}
+		h->size += this->size;
+		head = h;
+		this->distance = distance;
+	}
+	void deHead() {
+		if (head == nullptr)
+			return;
+		head->size -= this->size;
+		head = nullptr;
+		distance = 0;
+	}
+	void compressPath() {
+		if (head == nullptr || head->head == nullptr)
+			return;
+		head->compressPath();
+		auto h = head->head;
+		auto d = head->distance;
+		d += this->distance;
+		deHead();
+		setHead(h, d);
+		return;
+	}
+	TreeNode* getRoot() {
+		compressPath();
+		TreeNode* result = this;
+		while (result->head != nullptr) {
+			result = result->head;
+		}
 		return result;
 	}
-	else {
-		jumpTable[s].jump(find(jumpTable[s]));
-		return jumpTable[s];
+};
+std::map<Status, TreeNode*> treeNodes;
+std::map<Status, TreeNode*> destinations;
+TreeNode endPoint(Status(0xffff, 0xffff, 0xff));
+long long getDistance(const Status& first, const Status& last) {
+	if (first == last) return 0;
+	if (first == endPoint.stat || last == endPoint.stat)
+		return INT64_MAX;
+	if (treeNodes.find(first) == treeNodes.end()
+		|| treeNodes.find(last) == treeNodes.end()) {
+		return INT64_MAX;
 	}
-}
-void initJumpTable(const Status& a) {
-	assert(jumpTable.find(a) == jumpTable.end());
-	auto r = a.r;
-	auto c = a.c;
+	auto firstNode = treeNodes[first];
+	auto lastNode = treeNodes[last];
+	{
+		auto firstRoot = firstNode->getRoot();
+		auto lastRoot = lastNode->getRoot();
+		if (firstRoot != lastRoot) return INT64_MAX;
+		if (firstNode->head == nullptr)
+			return -lastNode->distance;
+		else if (lastNode->head == nullptr)
+			return firstNode->distance;
+	}
 
+	return firstNode->distance - lastNode->distance;
+}
+Status getDestination(const Status& s) {
+	if (treeNodes.find(s) == treeNodes.end()) {
+		return s;
+	}
+	return destinations[treeNodes[s]->getRoot()->stat]->stat;
+}
+void clean(unsigned short r, unsigned short c) {
 	for (int i = 0; i < 4; i++) {
-		Status tmp = Status(r, c, i, 0);
-		tmp.rotate(B[r][c]);
-		tmp.move();
-		if (tmp.r < 0 || tmp.r >= H || tmp.c < 0 
-			|| tmp.c >= W 
-			|| find(tmp) == Status(r, c, i, 0)) 
-		{
-			tmp.jump(endPoint);
+		Status prev(r, c, i);
+		Status next = prev;
+		next.rotate(B[r][c]);
+		next.move();
+
+		if (treeNodes.find(prev) == treeNodes.end()) {
+			TreeNode* node = new TreeNode(prev);
+			treeNodes.insert(std::make_pair(prev, node));
+			destinations.insert(std::make_pair(prev, node));
 		}
-		jumpTable.insert(
-			std::make_pair(
-				Status(r, c, i, 0),
-				tmp
-			)
-		);
+		auto np = treeNodes[prev];
+		if (next.r < 0 || next.r >= H 
+			|| next.c < 0 || next.c >= W)
+		{
+			destinations[np->getRoot()->stat] 
+				= &endPoint;
+			continue;
+		}
+
+		if (treeNodes.find(next) == treeNodes.end()) {
+			TreeNode* node = new TreeNode(next);
+			treeNodes.insert(std::make_pair(next, node));
+			destinations.insert(std::make_pair(next, node));
+		}
+		auto nn = treeNodes[next];
+		auto npr = np->getRoot();
+		auto nnr = nn->getRoot();
+		if (nnr == npr) {
+			destinations[npr->stat] = &endPoint;
+			continue;
+		}
+
+		long long distance
+			= getDistance(npr->stat, np->stat)
+			+ 1
+			+ getDistance(nn->stat, nnr->stat);
+		if (npr->size < nnr->size) {
+			npr->setHead(nnr, distance);
+			destinations.erase(npr->stat);
+		}
+		else {
+			nnr->setHead(npr, -distance);
+			destinations[npr->stat] = destinations[nnr->stat];
+			destinations.erase(nnr->stat);
+		}
+		continue;
 	}
 }
 
+Status aris(0, 0, 0);
+long long arisMovingCounter = 0;
 int main() {
 	std::ios::sync_with_stdio(false);
 	std::cin.tie(0);
@@ -88,7 +165,7 @@ int main() {
 	std::cin >> H >> W;
 
 	std::cin >> R >> C >> D;
-	aris = Status(R, C, D, 0);
+	aris = Status(R, C, D);
 
 	A = new char* [H];
 	for (int i = 0; i < H; i++) {
@@ -107,25 +184,26 @@ int main() {
 		}
 	}
 
-	while (true) {
-		auto next = find(aris);
-		if (next == endPoint)
-			break;
-
+	while (0 <= aris.r && aris.r < H
+		&& 0 <= aris.c && aris.c < W) {
+		auto next = getDestination(aris);
 		if (next == aris) {
-			initJumpTable(next);
+			clean(aris.r, aris.c);
 			aris.rotate(A[aris.r][aris.c]);
 			aris.move();
+			arisMovingCounter += 1;
+		}
+		else if (next == endPoint.stat) {
+			break;
 		}
 		else {
-			aris.jump(next);
+			auto d = getDistance(aris, next);
+			aris = next;
+			arisMovingCounter += d;
 		}
 
-		if (aris.r < 0 || aris.r >= H || aris.c < 0 || aris.c >= W)
-			break;
-
 	}
-	std::cout << aris.distance;
+	std::cout << arisMovingCounter;
 
 	for (int i = 0; i < H; i++) {
 		delete[] A[i], B[i];
