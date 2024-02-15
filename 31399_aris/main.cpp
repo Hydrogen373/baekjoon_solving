@@ -1,5 +1,6 @@
 #include<iostream>
 #include<map>
+#include<vector>
 
 int H, W;
 int R, C, D;
@@ -7,8 +8,8 @@ int R, C, D;
 int dr[]{ -1,0,1,0 };
 int dc[]{ 0,1,0,-1 };
 
-char** A;
-char** B;
+unsigned char** A;
+unsigned char** B;
 
 struct Status {
 	unsigned short r, c;
@@ -30,14 +31,27 @@ struct Status {
 		else if (c != other.c) return c < other.c;
 		else return d < other.d;
 	}
+	bool operator!=(const Status& other) const {
+		return !(*this == other);
+	}
 };
 struct TreeNode {
 	Status stat;
 	TreeNode* head;
 	long long distance;
 	long long size;
+	TreeNode* destination;
 	TreeNode(const Status& s)
-		:stat(s), head(nullptr), distance(0), size(1) {}
+		:stat(s), head(nullptr), distance(INT64_MAX), size(1),
+		destination(nullptr) {}
+	TreeNode() :TreeNode(Status(0, 0, 0)) {}
+	void init(const Status& s) {
+		stat = s;
+		head = nullptr;
+		distance = INT64_MAX;
+		size = 1;
+		destination = this;
+	}
 	void setHead(TreeNode* h, long long distance) {
 		if (head != nullptr) {
 			return;
@@ -73,36 +87,36 @@ struct TreeNode {
 		return result;
 	}
 };
-std::map<Status, TreeNode*> treeNodes;
-std::map<Status, TreeNode*> destinations;
+
+TreeNode*** treeNodes;
 TreeNode endPoint(Status(0xffff, 0xffff, 0xff));
+TreeNode* getTreeNode(const Status& s) {
+	if (s.r < 0 || s.r >= H || s.c < 0 || s.c >= W) {
+		return &endPoint;
+	}
+	return &(treeNodes[s.r][s.c][s.d]);
+}
 long long getDistance(const Status& first, const Status& last) {
 	if (first == last) return 0;
-	if (first == endPoint.stat || last == endPoint.stat)
+	auto firstNode = getTreeNode(first);
+	auto lastNode = getTreeNode(last);
+	if (firstNode == &endPoint || lastNode == &endPoint)
 		return INT64_MAX;
-	if (treeNodes.find(first) == treeNodes.end()
-		|| treeNodes.find(last) == treeNodes.end()) {
-		return INT64_MAX;
-	}
-	auto firstNode = treeNodes[first];
-	auto lastNode = treeNodes[last];
+
+	firstNode->compressPath(); lastNode->compressPath();
 	{
 		auto firstRoot = firstNode->getRoot();
 		auto lastRoot = lastNode->getRoot();
 		if (firstRoot != lastRoot) return INT64_MAX;
-		if (firstNode->head == nullptr)
+		else if (firstNode->head == nullptr)
 			return -lastNode->distance;
 		else if (lastNode->head == nullptr)
 			return firstNode->distance;
 	}
-
 	return firstNode->distance - lastNode->distance;
 }
 Status getDestination(const Status& s) {
-	if (treeNodes.find(s) == treeNodes.end()) {
-		return s;
-	}
-	return destinations[treeNodes[s]->getRoot()->stat]->stat;
+	return getTreeNode(s)->getRoot()->destination->stat;
 }
 void clean(unsigned short r, unsigned short c) {
 	for (int i = 0; i < 4; i++) {
@@ -111,30 +125,18 @@ void clean(unsigned short r, unsigned short c) {
 		next.rotate(B[r][c]);
 		next.move();
 
-		if (treeNodes.find(prev) == treeNodes.end()) {
-			TreeNode* node = new TreeNode(prev);
-			treeNodes.insert(std::make_pair(prev, node));
-			destinations.insert(std::make_pair(prev, node));
-		}
-		auto np = treeNodes[prev];
-		if (next.r < 0 || next.r >= H 
-			|| next.c < 0 || next.c >= W)
+		auto np = getTreeNode(prev);
+		auto nn = getTreeNode(next);
+		if (nn == &endPoint)
 		{
-			destinations[np->getRoot()->stat] 
-				= &endPoint;
+			np->getRoot()->destination = &endPoint;
 			continue;
 		}
 
-		if (treeNodes.find(next) == treeNodes.end()) {
-			TreeNode* node = new TreeNode(next);
-			treeNodes.insert(std::make_pair(next, node));
-			destinations.insert(std::make_pair(next, node));
-		}
-		auto nn = treeNodes[next];
 		auto npr = np->getRoot();
 		auto nnr = nn->getRoot();
 		if (nnr == npr) {
-			destinations[npr->stat] = &endPoint;
+			npr->getRoot()->destination = &endPoint;
 			continue;
 		}
 
@@ -144,12 +146,10 @@ void clean(unsigned short r, unsigned short c) {
 			+ getDistance(nn->stat, nnr->stat);
 		if (npr->size < nnr->size) {
 			npr->setHead(nnr, distance);
-			destinations.erase(npr->stat);
 		}
 		else {
 			nnr->setHead(npr, -distance);
-			destinations[npr->stat] = destinations[nnr->stat];
-			destinations.erase(nnr->stat);
+			npr->destination = nnr->destination;
 		}
 		continue;
 	}
@@ -167,20 +167,30 @@ int main() {
 	std::cin >> R >> C >> D;
 	aris = Status(R, C, D);
 
-	A = new char* [H];
+	A = new unsigned char* [H];
 	for (int i = 0; i < H; i++) {
-		A[i] = new char[W];
+		A[i] = new unsigned char[W];
 		for (int j = 0; j < W; j++) {
 			std::cin >> A[i][j];
 			A[i][j] -= '0';
 		}
 	}
-	B = new char* [H];
+	B = new unsigned char* [H];
 	for (int i = 0; i < H; i++) {
-		B[i] = new char[W];
+		B[i] = new unsigned char[W];
 		for (int j = 0; j < W; j++) {
 			std::cin >> B[i][j];
 			B[i][j] -= '0';
+		}
+	}
+	treeNodes = new TreeNode * *[H];
+	for (int i = 0; i < H; i++) {
+		treeNodes[i] = new TreeNode * [W];
+		for (int j = 0; j < W; j++) {
+			treeNodes[i][j] = new TreeNode[4];
+			for (int k = 0; k < 4; k++) {
+				treeNodes[i][j][k].init(Status(i, j, k));
+			}
 		}
 	}
 
@@ -205,10 +215,16 @@ int main() {
 	}
 	std::cout << arisMovingCounter;
 
+	// termination
 	for (int i = 0; i < H; i++) {
 		delete[] A[i], B[i];
+		for (int j = 0; j < W; j++) {
+			delete[] treeNodes[i][j];
+		}
+		delete[] treeNodes[i];
 	}
 	delete[] A, B;
+	delete[] treeNodes;
 
 	return 0;
 }
