@@ -217,13 +217,15 @@ int main() {
 
 	// termination
 	for (int i = 0; i < H; i++) {
-		delete[] A[i], B[i];
+		delete[] A[i];
+		delete[] B[i];
 		for (int j = 0; j < W; j++) {
 			delete[] treeNodes[i][j];
 		}
 		delete[] treeNodes[i];
 	}
-	delete[] A, B;
+	delete[] A;
+	delete[] B;
 	delete[] treeNodes;
 
 	return 0;

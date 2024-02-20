@@ -90,7 +90,10 @@ public:
 		auto result = solution[2][N - 1];
 		if (flag)
 			result = solution[1][N - 1];
-		delete[] solution[0], solution[1], solution[2], solution;
+		delete[] solution[0];
+		delete[] solution[1];
+		delete[] solution[2];
+		delete[] solution;
 		return result;
 	}
 };
@@ -101,7 +104,9 @@ class TestCase {
 public:
 	TestCase() :N(0), W(0), mp(nullptr) {}
 	~TestCase() {
-		delete[] mp[0], mp[1], mp;
+		delete[] mp[0];
+		delete[] mp[1];
+		delete[] mp;
 		mp = nullptr;
 	}
 	void init() {
@@ -143,7 +148,10 @@ public:
 				tmp[1][j] = mp[1][(i + 1 + j) % N];
 			}
 			std::swap(mp, tmp);
-			delete[] tmp[0], tmp[1], tmp;
+			delete[] tmp[0];
+			delete[] tmp[1];
+			delete[] tmp;
+
 			return 0;
 		}
 
@@ -160,7 +168,9 @@ public:
 					tmp[1][j] = mp[1][(i + 1 + j) % N];
 				}
 				std::swap(mp, tmp);
-				delete[] tmp[0], tmp[1], tmp;
+				delete[] tmp[0];
+				delete[] tmp[1];
+				delete[] tmp;
 			}
 			if (mp[1][0] + mp[1][N - 1] <= W) {
 				std::swap(mp[0], mp[1]);
