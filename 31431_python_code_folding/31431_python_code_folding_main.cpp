@@ -1,19 +1,38 @@
 #include<iostream>
+#include<vector>
+#include<stack>
 #include<map>
 
-class FoldedNode;
+class SplayTree;
+void toggle(int);
+void _show(SplayTree*, int);
 class SplayTree {
 protected:
 	SplayTree* p = nullptr;
-	int key;
+	int left;
+	int right;
 	int sum = 1;
-	int size = 1;
 	bool folded = false;
 	SplayTree* lt = nullptr;
 	SplayTree* rt = nullptr;
 	SplayTree* ft = nullptr;
+	friend void toggle(int);
+	friend void _show(SplayTree*, int);
 public:
-	SplayTree(int i) :key(i) {}
+	SplayTree(int i) :left(i), right(i) {}
+	SplayTree(int l, int r) :left(l), right(r) {}
+	void fold(SplayTree* t, int r) {
+		ft = t;
+		folded = true;
+		right = r;
+	}
+	SplayTree* unfold() {
+		auto res = ft;
+		ft = nullptr;
+		folded = false;
+		right = left;
+		return res;
+	}
 	~SplayTree() {
 		if (lt != nullptr)
 			delete lt;
@@ -24,19 +43,13 @@ public:
 		ft = lt = rt = nullptr;
 	}
 	void update() {
-		sum = (folded ? 0 : 1);
-		size = 1;
+		sum = 1;
 		if (lt != nullptr) {
-			if(lt->folded==false)
-				sum += lt->sum;
-			size += lt->size;
+			sum += lt->sum;
 		}
 		if (rt != nullptr) {
-			if(rt->folded==false)
-				sum += rt->sum;
-			size += rt->size;
+			sum += rt->sum;
 		}
-		p->update();
 	}
 	void rotate() {
 		if (p==nullptr)
@@ -64,6 +77,7 @@ public:
 		if (child != nullptr) {
 			child->p = parent;
 		}
+		this->p = grandpa;
 		parent->update();
 		this->update();
 	}
@@ -72,23 +86,7 @@ public:
 			return;
 		}
 		if (p->p != nullptr) {
-			SplayTree* u;
-			SplayTree* c;
-			if (p->p->lt = p) {
-				u = p->p->rt;
-			}
-			else {
-				u = p->p->lt;
-			}
-			if (p->lt = this) {
-				c = rt;
-			}
-			else {
-				c = lt;
-			}
-
-			if (u == nullptr
-				|| (c != nullptr && u->size < c->size)) {
+			if ((p->p->lt == p) == (p->lt == this)) {
 				p->rotate();
 			}
 			else {
@@ -99,120 +97,190 @@ public:
 		rotate();
 		splay();
 	}
-	std::pair<SplayTree*, SplayTree*> split() {
+	SplayTree* splitR() {
 		splay();
-		auto r = std::make_pair(lt, rt);
-		rt->p = lt->p = nullptr;
-		lt = rt = nullptr;
+		auto res = rt;
+		if (rt != nullptr)
+			rt->p = nullptr;
+		rt = nullptr;
 		update();
-		return r;
+		return res;
+	}
+	SplayTree* splitL() {
+		splay();
+		auto res = lt;
+		if (lt != nullptr)
+			lt->p = nullptr;
+		lt = nullptr;
+		update();
+		return res;
 	}
 	SplayTree* getRoot() {
-		auto r = p;
-		while (r->p != nullptr) {
-			r = r->p;
+		auto res = this;
+		while (res->p != nullptr) {
+			res = res->p;
 		}
-		return r;
+		return res;
 	}
 	static void conn(SplayTree* l, SplayTree* r) {
+		if (l == nullptr || r == nullptr || l == r) {
+			return;
+		}
 		l = l->getRoot();
 		r = r->getRoot();
-		while (l->rt == nullptr) {
+		while (l->rt != nullptr) {
 			l = l->rt;
 		}
 		l->splay();
-		while (r->lt == nullptr) {
-			r = r->lt;
-		}
-		r->splay();
 
-		if (l->size > r->size) {
-			l->rt = r;
-			r->p = l;
-			l->update();
-		}
-		else {
-			r->lt = l;
-			l->p = r;
-			r->update();
-		}
-	}
-	static SplayTree* init() {
-		auto res = new SplayTree(0);
-		res->sum = 0;
-		return res;
+		l->rt = r;
+		r->p = l;
+		l->update();
 	}
 
-	SplayTree* find(int i) {
-		if (i == key)
-			return this;
-		else if (i < key)
-			return lt->find(i);
-		else
-			return rt->find(i);
-	}
-};
-class FoldedNode :SplayTree {
-	SplayTree* t;
-public:
-	FoldedNode(SplayTree* t, int k) :t(t), SplayTree(k) {
-		sum = 0;
-		folded = true;
+	//SplayTree* _find(int i) {
+	//	if (left <= i && i <= right) {
+	//		splay();
+	//		return this;
+	//	}
+	//	else if (i < left)
+	//		return lt->_find(i);
+	//	else
+	//		return rt->_find(i);
+	//}
+
+	int getSum() {
+		return sum;
 	}
 };
 
-void fold(SplayTree* s, int l, int r) {
+struct Block {
+	bool folded = false;
+	int header = 0;
+	int end = 0;
+	Block(int h, int e) :header(h), end(e) {}
+};
+std::vector<Block> blocks;
+int lineNum = 0;
+std::map<int, SplayTree*> mp;
+void toggle(int i) {
+	SplayTree* t1, * t2, * t3;
+	if (blocks[i].folded == false) {
+		// folding
+		t1 = mp[blocks[i].header];
+		t3 = mp[blocks[i].end];
 
+		t2 = t1->splitR();
+		if (t3 != nullptr) {
+			t2 = t3->splitL();
+		}
+		t1->fold(t2, blocks[i].end - 1);
+		SplayTree::conn(t1, t3);
+		t1->splay();
+		lineNum = t1->getSum();
+	}
+	else {
+		t1 = mp[blocks[i].header];
+		t3 = t1->splitR();
+
+		t2 = t1->unfold();
+		
+		SplayTree::conn(t1, t2);
+		SplayTree::conn(t2, t3);
+		t1->splay();
+		lineNum = t1->getSum();
+	}
+	blocks[i].folded = !blocks[i].folded;
+}
+
+void _show(SplayTree* t, int i){
+	if (t->rt != nullptr) {
+		_show(t->rt, i + 1);
+	}
+	for (int j = 0; j < i; j++) {
+		std::cout << '\t';
+	}
+	if (t->folded) {
+		std::cout << "(" << t->left << ", " << t->right << ")";
+	}
+	else {
+		std::cout << "(" << t->left << ")";
+	}
+	std::cout << "[" << t->sum << "]" << '\n';
+	if (t->lt != nullptr) {
+		_show(t->lt, i + 1);
+	}
+}
+void show() {
+	std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvv\n";
+	_show(mp[1]->getRoot(), 0);
+	std::cout << "^^^^^^^^^^^^^^^^^^^^^^^^^\n";
 
 }
 
 int main() {
 	std::ios::sync_with_stdio(0);
 	std::cin.tie(0); std::cout.tie(0);
-	SplayTree base;
-	std::vector<SplayTree*> blocks;
-	blocks.push_back(&base);
-	std::vector<SplayTree*> nodes;
+
+	blocks.push_back(Block(0, 0));
 
 	int N, Q;
 	std::cin >> N >> Q;
-	std::stack<std::pair<int,SplayTree*>> lastHeader;
-	lastHeader.push(std::make_pair(-1,&base));
-	for (int i = 0; i < N; i++) {
+	lineNum = N;
+
+	std::stack<std::pair<int, int>> blockStack;
+	SplayTree* node = nullptr;
+	SplayTree* root = nullptr;
+	for (int i = 1; i <= N; i++) {
 		int li;
-		char ci;
-		std::cin >> li >> ci;
-		while (lastHeader.top().first >= li) {
-			lastHeader.pop();
+		char ti;
+		std::cin >> li >> ti;
+
+		while (blockStack.empty() == false)
+		{
+			if (blockStack.top().first >= li) {
+				blocks[blockStack.top().second].end = i;
+				blockStack.pop();
+			}
+			else {
+				break;
+			}
 		}
-		auto node = new SplayTree(li, ci=='h');
-		nodes.push_back(node);
-		node->point(lastHeader.top().second);
-		if (ci == 'h') {
-			blocks.push_back(node);
-			lastHeader.push(std::make_pair(li, node));
+
+		if (ti == 'h') {
+			blocks.push_back(Block(i, i));
+			blockStack.push(std::make_pair(li, blocks.size() - 1));
 		}
+
+		node = new SplayTree(i);
+		mp.insert(std::make_pair(i, node));
+
+		SplayTree::conn(root, node);
+		std::swap(node, root);
+		root->splay();
 	}
+	while (blockStack.empty() == false) {
+		blocks[blockStack.top().second].end = N + 1;
+		blockStack.pop();
+	}
+	mp.insert(std::make_pair(N + 1, nullptr));
 
 	for (int i = 0; i < Q; i++) {
 		char q;
 		std::cin >> q;
 		if (q == 't') {
-			int j;
-			std::cin >> j;
-			blocks[j]->toggle();
+			int x;
+			std::cin >> x;
+			toggle(x);
+			//// debug
+			//show();
 		}
 		else {
-			std::cout << blocks[0]->getLineNum() << '\n';
+			std::cout << lineNum << '\n';
 		}
 	}
 
 
-
-	// end
-	for (auto node : nodes) {
-		delete node;
-	}
 	return 0;
 }
 
