@@ -162,13 +162,13 @@ struct Block {
 };
 std::vector<Block> blocks;
 int lineNum = 0;
-std::map<int, SplayTree*> mp;
+std::vector<SplayTree*> vec;
 void toggle(int i) {
 	SplayTree* t1, * t2, * t3;
 	if (blocks[i].folded == false) {
 		// folding
-		t1 = mp[blocks[i].header];
-		t3 = mp[blocks[i].end];
+		t1 = vec[blocks[i].header];
+		t3 = vec[blocks[i].end];
 
 		t2 = t1->splitR();
 		if (t3 != nullptr) {
@@ -180,7 +180,7 @@ void toggle(int i) {
 		lineNum = t1->getSum();
 	}
 	else {
-		t1 = mp[blocks[i].header];
+		t1 = vec[blocks[i].header];
 		t3 = t1->splitR();
 
 		t2 = t1->unfold();
@@ -213,7 +213,7 @@ void _show(SplayTree* t, int i){
 }
 void show() {
 	std::cout << "vvvvvvvvvvvvvvvvvvvvvvvvv\n";
-	_show(mp[1]->getRoot(), 0);
+	_show(vec[1]->getRoot(), 0);
 	std::cout << "^^^^^^^^^^^^^^^^^^^^^^^^^\n";
 
 }
@@ -223,6 +223,7 @@ int main() {
 	std::cin.tie(0); std::cout.tie(0);
 
 	blocks.push_back(Block(0, 0));
+	vec.push_back(nullptr);
 
 	int N, Q;
 	std::cin >> N >> Q;
@@ -253,7 +254,7 @@ int main() {
 		}
 
 		node = new SplayTree(i);
-		mp.insert(std::make_pair(i, node));
+		vec.push_back(node);
 
 		SplayTree::conn(root, node);
 		std::swap(node, root);
@@ -263,7 +264,7 @@ int main() {
 		blocks[blockStack.top().second].end = N + 1;
 		blockStack.pop();
 	}
-	mp.insert(std::make_pair(N + 1, nullptr));
+	vec.push_back(nullptr);
 
 	for (int i = 0; i < Q; i++) {
 		char q;
