@@ -27,6 +27,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "1006_raider", "1006_raider\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2098_tsp", "2098_tsp\2098_tsp.vcxproj", "{BED81547-3BDB-437B-A18A-B334CC326600}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2143_sum_of_sequence", "2143_sum_of_sequence\2143_sum_of_sequence.vcxproj", "{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -131,6 +133,14 @@ Global
 		{BED81547-3BDB-437B-A18A-B334CC326600}.Release|x64.Build.0 = Release|x64
 		{BED81547-3BDB-437B-A18A-B334CC326600}.Release|x86.ActiveCfg = Release|Win32
 		{BED81547-3BDB-437B-A18A-B334CC326600}.Release|x86.Build.0 = Release|Win32
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Debug|x64.ActiveCfg = Debug|x64
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Debug|x64.Build.0 = Debug|x64
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Debug|x86.ActiveCfg = Debug|Win32
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Debug|x86.Build.0 = Debug|Win32
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Release|x64.ActiveCfg = Release|x64
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Release|x64.Build.0 = Release|x64
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Release|x86.ActiveCfg = Release|Win32
+		{5ECAF8DA-14F5-4477-8F5D-4FE703834ECE}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
