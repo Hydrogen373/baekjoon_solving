@@ -44,10 +44,10 @@ ulli get(BitSet visited, int s) {
 
 ulli init(int i) {
 	ulli ret;
-	if (mp[N - 1][i] == BLOCKED || get((1 << N - 1) - 1, i) == BLOCKED)
+	if (mp[N - 1][i] == BLOCKED || get((1 << (N - 1)) - 1, i) == BLOCKED)
 		ret = BLOCKED;
 	else
-		ret = mp[N - 1][i] + get((1 << N - 1) - 1, i);
+		ret = mp[N - 1][i] + get((1 << (N - 1)) - 1, i);
 	assert(ret != 0);
 	return ret;
 }
