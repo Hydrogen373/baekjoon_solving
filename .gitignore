@@ -389,36 +389,3 @@ MigrationBackup/
 .ionide/
 
 # End of https://www.toptal.com/developers/gitignore/api/vs,c++
-
-*.sln
-*.vcxproj
-*.vcxproj.*
-/1005_acm/1005_acm.vcxproj
-/1005_acm/1005_acm.vcxproj.filters
-/1006_raider/1006_raider.vcxproj
-/1006_raider/1006_raider.vcxproj.filters
-/1208_sum_of_subsequence/1208_sum_of_subsequence.vcxproj
-/1208_sum_of_subsequence/1208_sum_of_subsequence.vcxproj.filters
-/1509_palindrome/1509_palindrome.vcxproj
-/1509_palindrome/1509_palindrome.vcxproj.filters
-/1562_stair_number/1562_stair_number.vcxproj
-/1562_stair_number/1562_stair_number.vcxproj.filters
-/1644_sum_of_prime_number/1644_sum_of_prime_number.vcxproj
-/1644_sum_of_prime_number/1644_sum_of_prime_number.vcxproj.filters
-/1647_city_partitioning/1647_city_partitioning.vcxproj
-/1647_city_partitioning/1647_city_partitioning.vcxproj.filters
-/1766_workbook/1766_workbook.vcxproj
-/1766_workbook/1766_workbook.vcxproj.filters
-/1799_bishop/1799_bishop.vcxproj
-/1799_bishop/1799_bishop.vcxproj.filters
-/2021_ranking/2021_ranking.vcxproj
-/2021_ranking/2021_ranking.vcxproj.filters
-/2098_tsp/2098_tsp.vcxproj
-/2098_tsp/2098_tsp.vcxproj.filters
-/2143_sum_of_sequence/2143_sum_of_sequence.vcxproj
-/2143_sum_of_sequence/2143_sum_of_sequence.vcxproj.filters
-/2162_line_group/2162_line_group.vcxproj
-/2162_line_group/2162_line_group.vcxproj.filters
-/4716_balloon/4716_balloon.vcxproj
-/4716_balloon/4716_balloon.vcxproj.filters
-/baekjoon_greedy.sln
