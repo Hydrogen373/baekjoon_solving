@@ -31,6 +31,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2143_sum_of_sequence", "214
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2162_line_group", "2162_line_group\2162_line_group.vcxproj", "{465DA3D3-0D4F-4AB3-8B6B-F5D43CE7FD7D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "2166_area_of_polygon", "2166_area_of_polygon\2166_area_of_polygon.vcxproj", "{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -151,6 +153,14 @@ Global
 		{465DA3D3-0D4F-4AB3-8B6B-F5D43CE7FD7D}.Release|x64.Build.0 = Release|x64
 		{465DA3D3-0D4F-4AB3-8B6B-F5D43CE7FD7D}.Release|x86.ActiveCfg = Release|Win32
 		{465DA3D3-0D4F-4AB3-8B6B-F5D43CE7FD7D}.Release|x86.Build.0 = Release|Win32
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Debug|x64.ActiveCfg = Debug|x64
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Debug|x64.Build.0 = Debug|x64
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Debug|x86.ActiveCfg = Debug|Win32
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Debug|x86.Build.0 = Debug|Win32
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Release|x64.ActiveCfg = Release|x64
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Release|x64.Build.0 = Release|x64
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Release|x86.ActiveCfg = Release|Win32
+		{B4D6140A-75A7-495A-9B51-E1F3B9F2FA76}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
